@@ -7,6 +7,7 @@ const User = require("../models/user");
 const Task = require("../models/tasks");
 const Department = require("../models/department");
 const Attendance = require("../models/attendance");
+const Position = require("../models/Position");
 const { authenticateToken, authorizeRoles } = require("../middleware/auth");
 
 // GET /api/employees - Get all employees (Admin only)
@@ -143,6 +144,7 @@ router.get(
 );
 
 // POST /api/employees - Create new employee (Admin only)
+
 router.post(
   "/",
   authenticateToken,
@@ -154,37 +156,57 @@ router.post(
         lastName,
         email,
         phone,
-        department,
-        position,
+        department, // frontend se "IT" aayega
+        position, // frontend se "Senior Backend Developer" aayega
         salary,
         joiningDate,
         address,
         emergencyContact,
       } = req.body;
 
-      // Create user account
+      // 1️⃣ Department lookup
+      const departmentDoc = await Department.findOne({
+        name: new RegExp(`^${department}$`, "i"),
+      });
+      if (!departmentDoc) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid department" });
+      }
+
+      // 2️⃣ Position lookup
+      const positionDoc = await Position.findOne({
+        title: new RegExp(`^${position}$`, "i"),
+      });
+      if (!positionDoc) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid position" });
+      }
+
+      // 3️⃣ Create user account
       const user = new User({
         name: `${firstName} ${lastName}`,
         email,
         password: "123456", // Default password
         role: "employee",
       });
-
       await user.save();
 
-      // Generate employee ID
+      // 4️⃣ Generate employee ID
       const employeeCount = await Employee.countDocuments();
       const employeeId = `EMP${String(employeeCount + 1).padStart(3, "0")}`;
 
-      // Create employee profile
+      // 5️⃣ Create employee profile
       const employee = new Employee({
         userId: user._id,
         employeeId,
         firstName,
         lastName,
+        email,
         phone,
-        department,
-        position,
+        department: departmentDoc._id, // ✅ Reference ID
+        position: positionDoc._id, // ✅ Reference ID
         salary,
         joiningDate,
         address,
@@ -199,6 +221,7 @@ router.post(
         data: employee,
       });
     } catch (error) {
+      console.error("Error creating employee:", error);
       res.status(500).json({
         success: false,
         message: "Server error",
