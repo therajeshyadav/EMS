@@ -65,75 +65,6 @@ router.get(
   }
 );
 
-// POST /api/attendance/check-in - Employee check-in
-// router.post("/check-in", authenticateToken, async (req, res) => {
-//   try {
-//     const { location } = req.body;
-//     location.type; // ✅ exists only if wrapped inside "location"
-//     location.coordinates;
-//     const today = new Date();
-//     today.setHours(0, 0, 0, 0);
-
-//     // Check if already checked in today
-//     const existingAttendance = await Attendance.findOne({
-//       employee: req.user.employeeId,
-//       date: today,
-//     });
-
-//     if (existingAttendance && existingAttendance.checkIn.time) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Already checked in today",
-//       });
-//     }
-
-//     let attendance;
-
-//     if (existingAttendance) {
-//       // Update existing record
-//       attendance = existingAttendance;
-//     } else {
-//       // Create new record
-//       attendance = new Attendance({
-//         employee: req.user.employeeId,
-//         date: today,
-//       });
-//     }
-
-//     attendance.checkIn = {
-//       time: new Date(),
-//       location: {
-//         type: req.body.location.type,
-//         coordinates: req.body.location.coordinates,
-//       },
-//     };
-
-//     // Determine status based on check-in time
-//     const checkInTime = new Date();
-//     const workStartTime = new Date();
-//     workStartTime.setHours(9, 0, 0, 0); // 9 AM
-
-//     if (checkInTime > workStartTime) {
-//       attendance.status = "late";
-//     } else {
-//       attendance.status = "present";
-//     }
-
-//     await attendance.save();
-
-//     res.json({
-//       success: true,
-//       message: "Check-in successful",
-//       data: attendance,
-//     });
-//   } catch (error) {
-//     res.status(500).json({
-//       success: false,
-//       message: "Server error",
-//       error: error.message,
-//     });
-//   }
-// });
 router.post("/check-in", authenticateToken, async (req, res) => {
   try {
     const { location } = req.body;
@@ -145,13 +76,14 @@ router.post("/check-in", authenticateToken, async (req, res) => {
       });
     }
 
+    // ✅ Fix date issue (always store as YYYY-MM-DD string)
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const dateString = today.toISOString().split("T")[0]; // e.g. "2025-08-20"
 
     // 🔎 Check if already checked in today
     const existingAttendance = await Attendance.findOne({
-      employee: req.user.employeeId, // middleware se aana chahiye
-      date: today,
+      employee: req.user.employeeId,
+      date: dateString, // 👈 ab yahan string compare hoga
     });
 
     if (existingAttendance && existingAttendance.checkIn?.time) {
@@ -170,7 +102,7 @@ router.post("/check-in", authenticateToken, async (req, res) => {
       // 🆕 Create new record
       attendance = new Attendance({
         employee: req.user.employeeId,
-        date: today,
+        date: dateString, // 👈 string assign
       });
     }
 
@@ -214,12 +146,14 @@ router.post("/check-in", authenticateToken, async (req, res) => {
 router.post("/check-out", authenticateToken, async (req, res) => {
   try {
     const { location } = req.body;
+
+    // ✅ Always use YYYY-MM-DD string for date
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const dateString = today.toISOString().split("T")[0];
 
     const attendance = await Attendance.findOne({
       employee: req.user.employeeId,
-      date: today,
+      date: dateString, // 👈 string match
     });
 
     if (!attendance) {
@@ -229,7 +163,7 @@ router.post("/check-out", authenticateToken, async (req, res) => {
       });
     }
 
-    if (attendance.checkOut.time) {
+    if (attendance.checkOut?.time) {
       return res.status(400).json({
         success: false,
         message: "Already checked out today",
@@ -241,7 +175,7 @@ router.post("/check-out", authenticateToken, async (req, res) => {
       location: location || null,
     };
 
-    // Calculate working hours
+    // ⏱ Calculate working hours
     const checkInTime = new Date(attendance.checkIn.time);
     const checkOutTime = new Date(attendance.checkOut.time);
     const workingMinutes = Math.floor(
@@ -250,21 +184,23 @@ router.post("/check-out", authenticateToken, async (req, res) => {
 
     attendance.workingHours = workingMinutes;
 
-    // Calculate overtime (if working more than 8 hours)
+    // ⏰ Overtime if > 8 hours
     if (workingMinutes > 480) {
-      // 8 hours = 480 minutes
       attendance.overtime = workingMinutes - 480;
+    } else {
+      attendance.overtime = 0;
     }
 
     await attendance.save();
 
-    res.json({
+    return res.json({
       success: true,
       message: "Check-out successful",
       data: attendance,
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Check-out error:", error);
+    return res.status(500).json({
       success: false,
       message: "Server error",
       error: error.message,
@@ -395,20 +331,23 @@ router.get("/me", authenticateToken, async (req, res) => {
     // Stats calculation
     const allRecords = await Attendance.find(query);
 
-    const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const start = startDate
+      ? new Date(startDate)
+      : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     const end = endDate ? new Date(endDate) : new Date();
 
     const workingDays = getWorkingDays(start, end);
 
-    const presentDays = allRecords.filter(
-      (r) => r.status === "present" || r.status === "late"
-    ).map(r => new Date(r.date).toDateString());
+    const presentDays = allRecords
+      .filter((r) => r.status === "present" || r.status === "late")
+      .map((r) => new Date(r.date).toDateString());
 
     const absentDays = workingDays.filter((d) => !presentDays.includes(d));
 
     const late = allRecords.filter((r) => r.status === "late").length;
     const totalDays = workingDays.length;
-    const rate = totalDays > 0 ? Math.round((presentDays.length / totalDays) * 100) : 0;
+    const rate =
+      totalDays > 0 ? Math.round((presentDays.length / totalDays) * 100) : 0;
 
     res.json({
       success: true,
@@ -430,10 +369,11 @@ router.get("/me", authenticateToken, async (req, res) => {
     });
   } catch (err) {
     console.error("Error fetching attendance:", err);
-    res.status(500).json({ success: false, message: "Server error", error: err.message });
+    res
+      .status(500)
+      .json({ success: false, message: "Server error", error: err.message });
   }
 });
-
 
 // GET /api/attendance/reports - Get attendance reports
 router.get("/reports", authenticateToken, async (req, res) => {

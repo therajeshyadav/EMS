@@ -4,46 +4,23 @@ import Login from "./components/Auth/Login";
 import EmployeeDashboard from "./components/Dashboard/EmployeeDashboard";
 import AdminDashboard from "./components/Dashboard/AdminDashboard";
 import SignUp from "./components/Auth/SignUp";
-import { getLocalStorage, setLocalStorage } from "./utils/localStorage";
 import { AuthContext } from "./context/Authprovider";
 
 const App = () => {
   const [user, setUser] = useState(null);
   const [loggedInUserData, setLoggedInUserData] = useState(null);
-  const [authData, setAuthData] = useContext(AuthContext);
+  const { authState, setAuthState } = useContext(AuthContext);
+
+ 
   useEffect(() => {
     const loggedInUser = localStorage.getItem("loggedInUser");
 
     if (loggedInUser) {
       const userData = JSON.parse(loggedInUser);
       setUser(userData.role);
-      setLoggedInUserData(userData.data);
+      setLoggedInUserData(userData.profile || userData.data);
     }
   }, []);
-
-  const handleLogin = (email, password) => {
-    if (email === "admin@me.com" && password === "123") {
-      setUser("admin");
-      localStorage.setItem("loggedInUser", JSON.stringify({ role: "admin" }));
-    } else {
-      const employee = authData.employees.find(
-        (e) =>
-          e.email.trim() === email.trim() &&
-          e.password.trim() === password.trim()
-      );
-
-      if (employee) {
-        setUser("employee");
-        setLoggedInUserData(employee);
-        localStorage.setItem(
-          "loggedInUser",
-          JSON.stringify({ role: "employee", data: employee })
-        );
-      } else {
-        alert("Invalid Credentials");
-      }
-    }
-  };
 
   return (
     <Routes>
@@ -53,7 +30,7 @@ const App = () => {
           user ? (
             <Navigate to={user === "employee" ? "/employee" : "/admin"} />
           ) : (
-            <Login handleLogin={handleLogin} />
+            <Login setUser={setUser} setLoggedInUserData={setLoggedInUserData} />
           )
         }
       />
@@ -62,7 +39,7 @@ const App = () => {
         path="/admin"
         element={
           user === "admin" ? (
-            <AdminDashboard changeUser={setUser} />
+            <AdminDashboard changeUser={setUser} data={loggedInUserData} />
           ) : (
             <Navigate to="/" />
           )

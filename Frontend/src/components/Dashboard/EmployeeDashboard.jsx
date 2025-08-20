@@ -10,6 +10,7 @@ import EmployeeTasks from '../Tasks/EmployeeTasks';
 import NotificationCenter from '../Notifications/NotificationCenter';
 
 const EmployeeDashboard = ({ changeUser, data }) => {
+  console.log(data);
   const [activeSection, setActiveSection] = useState('dashboard');
 
   const handleLogout = () => {

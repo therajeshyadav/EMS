@@ -1,35 +1,44 @@
-import React, { useState, useContext } from 'react';
-import { DollarSign, Download, Send, Calculator, Filter } from 'lucide-react';
-import { AuthContext } from '../../context/Authprovider';
+import React, { useState, useContext } from "react";
+import { DollarSign, Download, Send, Calculator, Filter } from "lucide-react";
 
 const PayrollManagement = () => {
-  const [userData] = useContext(AuthContext);
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [userData, setUserData] = useState(
+    JSON.parse(localStorage.getItem("userData")) || { employees: [] }
+  );
 
-  const payrollData = userData.employees?.map(emp => ({
-    ...emp,
-    salary: emp.salary || 50000,
-    bonus: 5000,
-    deductions: 2000,
-    tax: 8000,
-    netSalary: (emp.salary || 50000) + 5000 - 2000 - 8000,
-    status: 'pending'
-  })) || [];
+  const [selectedMonth, setSelectedMonth] = useState(
+    new Date().toISOString().slice(0, 7)
+  );
+
+  const payrollData =
+    userData.employees?.map((emp) => ({
+      ...emp,
+      salary: emp.salary || 50000,
+      bonus: 5000,
+      deductions: 2000,
+      tax: 8000,
+      netSalary: (emp.salary || 50000) + 5000 - 2000 - 8000,
+      status: "pending",
+    })) || [];
 
   const generatePayslip = (employee) => {
-    console.log('Generating payslip for:', employee.firstName);
+    console.log("Generating payslip for:", employee.firstName);
   };
 
   const processPayroll = () => {
-    console.log('Processing payroll for all employees');
+    console.log("Processing payroll for all employees");
   };
 
   return (
     <div className="animate-fade-in">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Payroll Management</h1>
-          <p className="text-gray-600 mt-1">Manage employee salaries and payslips</p>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Payroll Management
+          </h1>
+          <p className="text-gray-600 mt-1">
+            Manage employee salaries and payslips
+          </p>
         </div>
         <div className="flex space-x-3">
           <button
@@ -52,7 +61,12 @@ const PayrollManagement = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Total Payroll</p>
-              <p className="text-2xl font-bold text-green-600">₹{payrollData.reduce((sum, emp) => sum + emp.netSalary, 0).toLocaleString()}</p>
+              <p className="text-2xl font-bold text-green-600">
+                ₹
+                {payrollData
+                  .reduce((sum, emp) => sum + emp.netSalary, 0)
+                  .toLocaleString()}
+              </p>
             </div>
             <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
               <DollarSign className="w-6 h-6 text-green-600" />
@@ -64,7 +78,9 @@ const PayrollManagement = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Employees</p>
-              <p className="text-2xl font-bold text-blue-600">{payrollData.length}</p>
+              <p className="text-2xl font-bold text-blue-600">
+                {payrollData.length}
+              </p>
             </div>
             <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
               <DollarSign className="w-6 h-6 text-blue-600" />
@@ -77,7 +93,11 @@ const PayrollManagement = () => {
             <div>
               <p className="text-sm text-gray-600">Avg Salary</p>
               <p className="text-2xl font-bold text-purple-600">
-                ₹{Math.round(payrollData.reduce((sum, emp) => sum + emp.netSalary, 0) / payrollData.length || 0).toLocaleString()}
+                ₹
+                {Math.round(
+                  payrollData.reduce((sum, emp) => sum + emp.netSalary, 0) /
+                    payrollData.length || 0
+                ).toLocaleString()}
               </p>
             </div>
             <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
@@ -90,7 +110,9 @@ const PayrollManagement = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Pending</p>
-              <p className="text-2xl font-bold text-yellow-600">{payrollData.filter(emp => emp.status === 'pending').length}</p>
+              <p className="text-2xl font-bold text-yellow-600">
+                {payrollData.filter((emp) => emp.status === "pending").length}
+              </p>
             </div>
             <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
               <DollarSign className="w-6 h-6 text-yellow-600" />
@@ -139,16 +161,30 @@ const PayrollManagement = () => {
                         </span>
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900">{employee.firstName}</p>
-                        <p className="text-sm text-gray-500">{employee.position || 'Developer'}</p>
+                        <p className="font-medium text-gray-900">
+                          {employee.firstName}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {employee.position || "Developer"}
+                        </p>
                       </div>
                     </div>
                   </td>
-                  <td className="p-4 text-gray-600">₹{employee.salary.toLocaleString()}</td>
-                  <td className="p-4 text-green-600">₹{employee.bonus.toLocaleString()}</td>
-                  <td className="p-4 text-red-600">₹{employee.deductions.toLocaleString()}</td>
-                  <td className="p-4 text-red-600">₹{employee.tax.toLocaleString()}</td>
-                  <td className="p-4 font-bold text-gray-900">₹{employee.netSalary.toLocaleString()}</td>
+                  <td className="p-4 text-gray-600">
+                    ₹{employee.salary.toLocaleString()}
+                  </td>
+                  <td className="p-4 text-green-600">
+                    ₹{employee.bonus.toLocaleString()}
+                  </td>
+                  <td className="p-4 text-red-600">
+                    ₹{employee.deductions.toLocaleString()}
+                  </td>
+                  <td className="p-4 text-red-600">
+                    ₹{employee.tax.toLocaleString()}
+                  </td>
+                  <td className="p-4 font-bold text-gray-900">
+                    ₹{employee.netSalary.toLocaleString()}
+                  </td>
                   <td className="p-4">
                     <span className={`status-badge status-${employee.status}`}>
                       {employee.status}

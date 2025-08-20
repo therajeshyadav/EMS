@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { User, Lock, Eye, EyeOff, Shield } from "lucide-react";
+import { AuthApi } from "../../api/api";
+import { toast } from "react-hot-toast";
 
-const Login = ({ handleLogin }) => {
+const Login = ({ setUser, setLoggedInUserData }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -12,21 +14,49 @@ const Login = ({ handleLogin }) => {
   const submitHandler = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Simulate loading
-    setTimeout(() => {
-      handleLogin(email, password);
-      setEmail("");
-      setPassword("");
+
+    try {
+      const res = await AuthApi.login(email, password);
+      console.log("LOGIN RESPONSE:", res);
+
+      if (res?.success) {
+        // ✅ Save in localStorage
+        localStorage.setItem("token", res.token);
+        localStorage.setItem(
+          "loggedInUser",
+          JSON.stringify({
+            role: res.user?.role,
+            token: res.token,
+            user: res.user,
+            profile: res.profile,
+          })
+        );
+
+        // ✅ Update App.jsx state
+        setUser(res.user?.role);
+        setLoggedInUserData(res.profile);
+
+        toast.success("Login successful!");
+
+        // ✅ Navigate
+        if (res.user?.role === "employee") navigate("/employee");
+        else if (res.user?.role === "admin") navigate("/admin");
+        else navigate("/");
+      } else {
+        toast.error(res?.message || "Login failed!");
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Server error");
+      console.error("LOGIN ERROR:", err?.response?.data || err);
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (
     <div className="min-h-screen gradient-bg flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="glass-effect rounded-2xl p-8 card-shadow">
-          {/* Header */}
           <div className="text-center mb-8">
             <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4">
               <Shield className="w-8 h-8 text-indigo-600" />
@@ -35,7 +65,6 @@ const Login = ({ handleLogin }) => {
             <p className="text-white/80">Sign in to your EMS account</p>
           </div>
 
-          {/* Login Form */}
           <form onSubmit={submitHandler} className="space-y-6">
             <div>
               <label className="block text-white/90 text-sm font-medium mb-2">
@@ -73,7 +102,11 @@ const Login = ({ handleLogin }) => {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
                 >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
                 </button>
               </div>
             </div>
@@ -94,16 +127,6 @@ const Login = ({ handleLogin }) => {
             </button>
           </form>
 
-          {/* Demo Credentials */}
-          <div className="mt-8 p-4 bg-white/10 rounded-xl backdrop-blur-sm">
-            <h3 className="text-white font-medium mb-2">Demo Credentials:</h3>
-            <div className="text-white/80 text-sm space-y-1">
-              <p><strong>Admin:</strong> admin@me.com / 123</p>
-              <p><strong>Employee:</strong> employee1@example.com / 123</p>
-            </div>
-          </div>
-
-          {/* Sign Up Link */}
           <div className="text-center mt-6">
             <p className="text-white/80 text-sm">
               Don't have an account?{" "}

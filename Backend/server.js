@@ -1,12 +1,14 @@
-// app.js or server.js
+// server.js
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const connectDB = require("./config/db");
+const http = require("http");
+const { Server } = require("socket.io");
 
 const app = express();
 
-// Connect to database
+// Connect DB
 connectDB();
 
 // Middleware
@@ -24,10 +26,8 @@ app.use("/api/payroll", require("./routes/PayRollRoute"));
 app.use("/api/notifications", require("./routes/Notification"));
 app.use("/api/departments", require("./routes/DepartmentRoute"));
 app.use("/api/positions", require("./routes/PositionRoute"));
-// app.use("/api/reports", require("./routes/report"));
-// app.use("/api/settings", require("./routes/settings"));
 
-// Error handling middleware
+// Error Handling
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({
@@ -48,7 +48,54 @@ app.use("*", (req, res) => {
   });
 });
 
+// ✅ Create HTTP server
+const server = http.createServer(app);
+
+// ✅ Setup Socket.IO
+const io = new Server(server, {
+  cors: {
+    origin: "*", // frontend ka origin lagao (http://localhost:3000)
+    methods: ["GET", "POST"],
+  },
+});
+
+// ✅ Store connected users
+let onlineUsers = new Map();
+
+io.on("connection", (socket) => {
+  console.log("⚡ New client connected:", socket.id);
+
+  // Jab user connect hoga
+  socket.on("register", (userId) => {
+    onlineUsers.set(userId, socket.id);
+    console.log(`✅ User ${userId} registered with socket ${socket.id}`);
+  });
+
+  // Jab user disconnect kare
+  socket.on("disconnect", () => {
+    for (let [userId, id] of onlineUsers.entries()) {
+      if (id === socket.id) {
+        onlineUsers.delete(userId);
+        console.log(`❌ User ${userId} disconnected`);
+      }
+    }
+  });
+});
+
+// ✅ Function to send notification
+const sendNotification = (recipientId, notification) => {
+  const socketId = onlineUsers.get(recipientId.toString());
+  if (socketId) {
+    io.to(socketId).emit("notification", notification);
+    console.log("📩 Notification sent to", recipientId);
+  }
+};
+
+// Export notification sender function
+module.exports = { server, sendNotification };
+
+// Start server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
 });

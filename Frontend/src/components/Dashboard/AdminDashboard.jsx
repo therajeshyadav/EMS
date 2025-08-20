@@ -1,45 +1,47 @@
-import React, { useState, useContext } from 'react';
-import Sidebar from '../Layout/Sidebar';
-import TopBar from '../Layout/TopBar';
-import DashboardStats from './DashboardStats';
-import EmployeeManagement from '../Employee/EmployeeManagement';
-import AttendanceManagement from '../Attendance/AttendanceManagement';
-import LeaveManagement from '../Leave/LeaveManagement';
-import PayrollManagement from '../Payroll/PayrollManagement';
-import ReportsSection from '../Reports/ReportsSection';
-import TaskManagement from '../Tasks/TaskManagement';
-import NotificationCenter from '../Notifications/NotificationCenter';
-import SettingsPanel from '../Settings/SettingsPanel';
-import { AuthContext } from '../../context/Authprovider';
+import React, { useState } from "react";
+import Sidebar from "../Layout/Sidebar";
+import TopBar from "../Layout/TopBar";
+import DashboardStats from "./DashboardStats";
+import EmployeeManagement from "../Employee/EmployeeManagement";
+import AttendanceManagement from "../Attendance/AttendanceManagement";
+import LeaveManagement from "../Leave/LeaveManagement";
+import PayrollManagement from "../Payroll/PayrollManagement";
+import ReportsSection from "../Reports/ReportsSection";
+import TaskManagement from "../Tasks/TaskManagement";
+import NotificationCenter from "../Notifications/NotificationCenter";
+import SettingsPanel from "../Settings/SettingsPanel";
 
 const AdminDashboard = ({ changeUser }) => {
-  const [activeSection, setActiveSection] = useState('dashboard');
-  const [userData] = useContext(AuthContext);
+  const [activeSection, setActiveSection] = useState("dashboard");
+
+  
+  const storedUser = JSON.parse(localStorage.getItem("loggedInUser"));
 
   const handleLogout = () => {
-    localStorage.removeItem('loggedInUser');
-    changeUser('');
+    localStorage.removeItem("loggedInUser");
+    localStorage.removeItem("token");
+    changeUser("");
   };
 
   const renderContent = () => {
     switch (activeSection) {
-      case 'dashboard':
+      case "dashboard":
         return <DashboardStats />;
-      case 'employees':
+      case "employees":
         return <EmployeeManagement />;
-      case 'attendance':
+      case "attendance":
         return <AttendanceManagement />;
-      case 'leaves':
+      case "leaves":
         return <LeaveManagement />;
-      case 'payroll':
+      case "payroll":
         return <PayrollManagement />;
-      case 'reports':
+      case "reports":
         return <ReportsSection />;
-      case 'tasks':
+      case "tasks":
         return <TaskManagement />;
-      case 'notifications':
+      case "notifications":
         return <NotificationCenter />;
-      case 'settings':
+      case "settings":
         return <SettingsPanel />;
       default:
         return <DashboardStats />;
@@ -51,14 +53,14 @@ const AdminDashboard = ({ changeUser }) => {
       <Sidebar
         activeSection={activeSection}
         setActiveSection={setActiveSection}
-        userRole="admin"
+        userRole={storedUser?.role || "admin"}
         onLogout={handleLogout}
       />
       <div className="flex-1">
-        <TopBar user={{ firstName: 'Admin', role: 'admin' }} />
-        <main className="p-6">
-          {renderContent()}
-        </main>
+        <TopBar
+          user={storedUser?.user || { firstName: "Admin", role: "admin" }}
+        />
+        <main className="p-6">{renderContent()}</main>
       </div>
     </div>
   );

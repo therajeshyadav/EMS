@@ -1,67 +1,48 @@
-import React, { useState, useContext } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Calendar, Clock, CheckCircle, XCircle, Filter, Plus } from 'lucide-react';
-import { AuthContext } from '../../context/Authprovider';
+
 
 const LeaveManagement = () => {
-  const [userData] = useContext(AuthContext);
   const [filterStatus, setFilterStatus] = useState('all');
+  const [requests, setRequests] = useState([]);
 
-  // Mock leave data
-  const leaveRequests = [
-    {
-      id: 1,
-      employeeName: 'Amit',
-      leaveType: 'Sick Leave',
-      startDate: '2025-01-20',
-      endDate: '2025-01-22',
-      days: 3,
-      status: 'pending',
-      reason: 'Fever and cold',
-      appliedDate: '2025-01-15'
-    },
-    {
-      id: 2,
-      employeeName: 'Priya',
-      leaveType: 'Casual Leave',
-      startDate: '2025-01-25',
-      endDate: '2025-01-26',
-      days: 2,
-      status: 'approved',
-      reason: 'Personal work',
-      appliedDate: '2025-01-10'
-    },
-    {
-      id: 3,
-      employeeName: 'Rajesh',
-      leaveType: 'Annual Leave',
-      startDate: '2025-02-01',
-      endDate: '2025-02-05',
-      days: 5,
-      status: 'rejected',
-      reason: 'Family vacation',
-      appliedDate: '2025-01-12'
-    }
-  ];
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await api.get('/leaves', { page: 1, limit: 50 });
+        setRequests(res?.data || []);
+      } catch (_) {}
+    };
+    load();
+  }, []);
 
   const filteredRequests = filterStatus === 'all' 
-    ? leaveRequests 
-    : leaveRequests.filter(req => req.status === filterStatus);
+    ? requests 
+    : requests.filter(req => req.status === filterStatus);
 
-  const handleApprove = (id) => {
-    // Handle approval logic
-    console.log('Approved leave request:', id);
+  const handleApprove = async (id) => {
+    try {
+      await api.put(`/leaves/${id}/approve`, {});
+      setRequests(prev => prev.map(r => r._id === id ? { ...r, status: 'approved' } : r));
+    } catch (err) {
+      alert(err?.message || 'Failed to approve');
+    }
   };
 
-  const handleReject = (id) => {
-    // Handle rejection logic
-    console.log('Rejected leave request:', id);
+  const handleReject = async (id) => {
+    try {
+      await api.put(`/leaves/${id}/reject`, { rejectionReason: 'Not specified' });
+      setRequests(prev => prev.map(r => r._id === id ? { ...r, status: 'rejected' } : r));
+    } catch (err) {
+      alert(err?.message || 'Failed to reject');
+    }
   };
 
   const stats = {
-    pending: leaveRequests.filter(req => req.status === 'pending').length,
-    approved: leaveRequests.filter(req => req.status === 'approved').length,
-    rejected: leaveRequests.filter(req => req.status === 'rejected').length,
-    total: leaveRequests.length
+    pending: requests.filter(req => req.status === 'pending').length,
+    approved: requests.filter(req => req.status === 'approved').length,
+    rejected: requests.filter(req => req.status === 'rejected').length,
+    total: requests.length
   };
 
   return (
@@ -158,26 +139,26 @@ const LeaveManagement = () => {
             </thead>
             <tbody>
               {filteredRequests.map((request) => (
-                <tr key={request.id} className="table-row">
+                <tr key={request._id} className="table-row">
                   <td className="p-4">
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-indigo-500 rounded-full flex items-center justify-center">
                         <span className="text-white font-medium">
-                          {request.employeeName.charAt(0)}
+                          {(request.employee?.firstName || '?').charAt(0)}
                         </span>
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900">{request.employeeName}</p>
+                        <p className="font-medium text-gray-900">{request.employee?.firstName} {request.employee?.lastName}</p>
                         <p className="text-sm text-gray-500">{request.reason}</p>
                       </div>
                     </div>
                   </td>
                   <td className="p-4 text-gray-600">{request.leaveType}</td>
                   <td className="p-4 text-gray-600">
-                    {request.startDate} to {request.endDate}
+                    {new Date(request.startDate).toISOString().split('T')[0]} to {new Date(request.endDate).toISOString().split('T')[0]}
                   </td>
                   <td className="p-4 text-gray-600">{request.days} days</td>
-                  <td className="p-4 text-gray-600">{request.appliedDate}</td>
+                  <td className="p-4 text-gray-600">{new Date(request.createdAt).toISOString().split('T')[0]}</td>
                   <td className="p-4">
                     <span className={`status-badge status-${request.status}`}>
                       {request.status}
@@ -187,13 +168,13 @@ const LeaveManagement = () => {
                     {request.status === 'pending' && (
                       <div className="flex space-x-2">
                         <button
-                          onClick={() => handleApprove(request.id)}
+                          onClick={() => handleApprove(request._id)}
                           className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
                         >
                           Approve
                         </button>
                         <button
-                          onClick={() => handleReject(request.id)}
+                          onClick={() => handleReject(request._id)}
                           className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm"
                         >
                           Reject

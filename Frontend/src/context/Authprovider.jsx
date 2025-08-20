@@ -1,28 +1,38 @@
 import React, { createContext, useEffect, useState } from "react";
-import { getLocalStorage, setLocalStorage } from "../utils/localStorage";
+import { EmployeesApi } from "../api/api";
 
 export const AuthContext = createContext();
 
-const Authprovider = ({ children }) => {
-  const [userData, setUserData] = useState({ employees: [], admin: [] });
+export const AuthProvider = ({ children }) => {
+  const [authState, setAuthState] = useState({
+    token: localStorage.getItem("token") || null,
+    profile: null,
+  });
 
   useEffect(() => {
-    if (!localStorage.getItem("employees")) {
-      setLocalStorage();
-    }
-    const storedData = getLocalStorage();
+    const fetchProfile = async () => {
+      try {
+        if (authState.token) {
+          const res = await EmployeesApi.me();
+          if (res.data.success) {
+            setAuthState((prev) => ({
+              ...prev,
+              profile: res.data.data,
+            }));
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching profile:", err);
+      }
+    };
 
-    console.log("Loaded userData from localStorage:", storedData); // 🛠 Debugging
+    fetchProfile();
+  }, [authState.token]);
 
-    setUserData(storedData || { employees: [], admin: [] }); // ✅ Default fallback
-  }, []);
   return (
-    <div>
-      <AuthContext.Provider value={[userData, setUserData]}>
-        {children}
-      </AuthContext.Provider>
-    </div>
+    <AuthContext.Provider value={{ authState, setAuthState }}>
+      {children}
+    </AuthContext.Provider>
   );
 };
-
-export default Authprovider;
+export default AuthProvider;

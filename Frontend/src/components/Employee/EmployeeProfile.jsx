@@ -1,33 +1,102 @@
-import React, { useState } from 'react';
-import { Edit, Save, X, User, Mail, Phone, MapPin, Calendar, Briefcase, Heart } from 'lucide-react';
+// src/pages/Employee/EmployeeProfile.jsx
+import React, { useContext, useState, useEffect } from "react";
+import { Edit, Save, X, User, MapPin, Phone } from "lucide-react";
+import { AuthContext } from "../../context/Authprovider";
+import { EmployeesApi } from "../../api/api";
 
-const EmployeeProfile = ({ data }) => {
+const EmployeeProfile = ({data}) => {
+  const { authState, setAuthState } = useContext(AuthContext);
+  const profile = authState?.profile;
+
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({
-    firstName: data?.firstName || '',
-    lastName: data?.lastName || '',
-    email: data?.email || '',
-    phone: data?.phone || '',
-    address: data?.address || '',
-    department: data?.department || 'IT',
-    position: data?.position || 'Developer',
-    joinDate: data?.joinDate || '2024-01-01',
-    dateOfBirth: data?.dateOfBirth || '',
-    bloodGroup: data?.bloodGroup || '',
-    emergencyContact: data?.emergencyContact || ''
-  });
+  const [formData, setFormData] = useState({});
 
+  // ✅ initialize form when profile changes
+  useEffect(() => {
+    if (profile) {
+      setFormData({
+        firstName: profile.firstName || "",
+        lastName: profile.lastName || "",
+        email: profile.email || "",
+        phone: profile.phone || "",
+        address: profile.address || {
+          street: "",
+          city: "",
+          state: "",
+          zipCode: "",
+          country: "",
+        },
+        department: profile.department?.name || "",
+        position: profile.position?.title || "",
+        joinDate: profile.joiningDate || "",
+        dateOfBirth: profile.dateOfBirth || "",
+        bloodGroup: profile.bloodGroup || "",
+        emergencyContact: profile.emergencyContact || {
+          name: "",
+          phone: "",
+          relationship: "",
+        },
+        employeeId: profile.employeeId,
+      });
+    }
+  }, [profile]);
+
+  // Normal input
   const handleChange = (e) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
   };
 
-  const handleSave = () => {
-    // Here you would typically update the employee data
-    setIsEditing(false);
+  // Nested object input (address & emergencyContact)
+  const handleNestedChange = (e, parent) => {
+    setFormData({
+      ...formData,
+      [parent]: {
+        ...formData[parent],
+        [e.target.name]: e.target.value,
+      },
+    });
   };
+
+  const handleSave = async () => {
+    try {
+      const id = data?.employeeId;
+      if (!id) return setIsEditing(false);
+
+      const payload = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phone: formData.phone,
+        address: formData.address,
+        dateOfBirth: formData.dateOfBirth,
+        bloodGroup: formData.bloodGroup,
+        emergencyContact: formData.emergencyContact,
+      };
+
+      // update API
+      await EmployeesApi.update(`${id}`, payload);
+
+      // refresh profile
+      const refreshed = await EmployeesApi.me();
+      if (refreshed.data.success) {
+        setAuthState((prev) => ({
+          ...prev,
+          profile: refreshed.data.data,
+        }));
+      }
+    } catch (err) {
+      console.error("Update error:", err);
+    } finally {
+      setIsEditing(false);
+    }
+  };
+
+  if (!profile) {
+    return <p className="text-center text-gray-500">Loading profile...</p>;
+  }
 
   return (
     <div className="animate-fade-in">
@@ -39,7 +108,7 @@ const EmployeeProfile = ({ data }) => {
         <button
           onClick={() => setIsEditing(!isEditing)}
           className={`flex items-center space-x-2 ${
-            isEditing ? 'bg-red-500 hover:bg-red-600' : 'btn-primary'
+            isEditing ? "bg-red-500 hover:bg-red-600" : "btn-primary"
           } text-white px-4 py-2 rounded-lg`}
         >
           {isEditing ? (
@@ -57,6 +126,7 @@ const EmployeeProfile = ({ data }) => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Profile Card */}
         <div className="lg:col-span-1">
           <div className="bg-white rounded-xl p-6 card-shadow text-center">
             <div className="w-32 h-32 bg-indigo-500 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -66,175 +136,136 @@ const EmployeeProfile = ({ data }) => {
               {formData.firstName} {formData.lastName}
             </h2>
             <p className="text-gray-600 mb-2">{formData.position}</p>
-            <p className="text-sm text-gray-500">{formData.department} Department</p>
+            <p className="text-sm text-gray-500">
+              {formData.department} Department
+            </p>
             <div className="mt-4 pt-4 border-t border-gray-200">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Employee ID:</span>
-                <span className="font-medium">{data?.id}</span>
+                <span className="font-medium">{formData.employeeId}</span>
               </div>
               <div className="flex justify-between text-sm mt-2">
                 <span className="text-gray-500">Join Date:</span>
-                <span className="font-medium">{formData.joinDate}</span>
+                <span className="font-medium">
+                  {formData.joinDate?.slice(0, 10) || "Not Provided"}
+                </span>
               </div>
             </div>
           </div>
         </div>
 
+        {/* Right Info Section */}
         <div className="lg:col-span-2">
           <div className="bg-white rounded-xl p-6 card-shadow">
-            <h3 className="text-lg font-semibold text-gray-900 mb-6">Personal Information</h3>
-            
+            <h3 className="text-lg font-semibold text-gray-900 mb-6">
+              Personal Information
+            </h3>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <User className="w-4 h-4 inline mr-2" />
-                  First Name
-                </label>
-                {isEditing ? (
-                  <input
-                    type="text"
-                    name="firstName"
-                    value={formData.firstName}
-                    onChange={handleChange}
-                    className="input-field"
-                  />
-                ) : (
-                  <p className="text-gray-900 py-2">{formData.firstName}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Last Name
-                </label>
-                {isEditing ? (
-                  <input
-                    type="text"
-                    name="lastName"
-                    value={formData.lastName}
-                    onChange={handleChange}
-                    className="input-field"
-                  />
-                ) : (
-                  <p className="text-gray-900 py-2">{formData.lastName}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Mail className="w-4 h-4 inline mr-2" />
-                  Email
-                </label>
-                {isEditing ? (
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    className="input-field"
-                  />
-                ) : (
-                  <p className="text-gray-900 py-2">{formData.email}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Phone className="w-4 h-4 inline mr-2" />
-                  Phone
-                </label>
-                {isEditing ? (
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    className="input-field"
-                  />
-                ) : (
-                  <p className="text-gray-900 py-2">{formData.phone || 'Not provided'}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Calendar className="w-4 h-4 inline mr-2" />
-                  Date of Birth
-                </label>
-                {isEditing ? (
-                  <input
-                    type="date"
-                    name="dateOfBirth"
-                    value={formData.dateOfBirth}
-                    onChange={handleChange}
-                    className="input-field"
-                  />
-                ) : (
-                  <p className="text-gray-900 py-2">{formData.dateOfBirth || 'Not provided'}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Heart className="w-4 h-4 inline mr-2" />
-                  Blood Group
-                </label>
-                {isEditing ? (
-                  <select
-                    name="bloodGroup"
-                    value={formData.bloodGroup}
-                    onChange={handleChange}
-                    className="input-field"
-                  >
-                    <option value="">Select Blood Group</option>
-                    <option value="A+">A+</option>
-                    <option value="A-">A-</option>
-                    <option value="B+">B+</option>
-                    <option value="B-">B-</option>
-                    <option value="AB+">AB+</option>
-                    <option value="AB-">AB-</option>
-                    <option value="O+">O+</option>
-                    <option value="O-">O-</option>
-                  </select>
-                ) : (
-                  <p className="text-gray-900 py-2">{formData.bloodGroup || 'Not provided'}</p>
-                )}
-              </div>
+              <InputField
+                label="First Name"
+                name="firstName"
+                value={formData.firstName}
+                isEditing={isEditing}
+                handleChange={handleChange}
+              />
+              <InputField
+                label="Last Name"
+                name="lastName"
+                value={formData.lastName}
+                isEditing={isEditing}
+                handleChange={handleChange}
+              />
+              <InputField
+                label="Email"
+                name="email"
+                value={formData.email}
+                isEditing={isEditing}
+                handleChange={handleChange}
+              />
+              <InputField
+                label="Phone"
+                name="phone"
+                value={formData.phone}
+                isEditing={isEditing}
+                handleChange={handleChange}
+              />
+              <InputField
+                label="Date of Birth"
+                name="dateOfBirth"
+                type="date"
+                value={formData.dateOfBirth?.slice(0, 10)}
+                isEditing={isEditing}
+                handleChange={handleChange}
+              />
+              <SelectField
+                label="Blood Group"
+                name="bloodGroup"
+                value={formData.bloodGroup}
+                isEditing={isEditing}
+                handleChange={handleChange}
+              />
             </div>
 
+            {/* Address */}
             <div className="mt-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <MapPin className="w-4 h-4 inline mr-2" />
                 Address
               </label>
               {isEditing ? (
-                <textarea
-                  name="address"
-                  value={formData.address}
-                  onChange={handleChange}
-                  className="input-field"
-                  rows="3"
-                />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {["street", "city", "state", "zipCode", "country"].map(
+                    (field) => (
+                      <input
+                        key={field}
+                        type="text"
+                        name={field}
+                        placeholder={field}
+                        value={formData.address?.[field] || ""}
+                        onChange={(e) => handleNestedChange(e, "address")}
+                        className="input-field"
+                      />
+                    )
+                  )}
+                </div>
               ) : (
-                <p className="text-gray-900 py-2">{formData.address || 'Not provided'}</p>
+                <p className="text-gray-900 py-2">
+                  {formData.address?.street}, {formData.address?.city},{" "}
+                  {formData.address?.state} {formData.address?.zipCode},{" "}
+                  {formData.address?.country}
+                </p>
               )}
             </div>
 
+            {/* Emergency Contact */}
             <div className="mt-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
+                <Phone className="w-4 h-4 inline mr-2" />
                 Emergency Contact
               </label>
               {isEditing ? (
-                <input
-                  type="text"
-                  name="emergencyContact"
-                  value={formData.emergencyContact}
-                  onChange={handleChange}
-                  className="input-field"
-                  placeholder="Name and phone number"
-                />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {["name", "phone", "relationship"].map((field) => (
+                    <input
+                      key={field}
+                      type="text"
+                      name={field}
+                      placeholder={field}
+                      value={formData.emergencyContact?.[field] || ""}
+                      onChange={(e) =>
+                        handleNestedChange(e, "emergencyContact")
+                      }
+                      className="input-field"
+                    />
+                  ))}
+                </div>
               ) : (
-                <p className="text-gray-900 py-2">{formData.emergencyContact || 'Not provided'}</p>
+                <p className="text-gray-900 py-2">
+                  {formData.emergencyContact?.name} (
+                  {formData.emergencyContact?.relationship}) -{" "}
+                  {formData.emergencyContact?.phone}
+                </p>
               )}
             </div>
 
@@ -255,5 +286,58 @@ const EmployeeProfile = ({ data }) => {
     </div>
   );
 };
+
+// Reusable Input
+const InputField = ({
+  label,
+  name,
+  value,
+  handleChange,
+  isEditing,
+  type = "text",
+}) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-2">
+      {label}
+    </label>
+    {isEditing ? (
+      <input
+        type={type}
+        name={name}
+        value={value}
+        onChange={handleChange}
+        className="input-field"
+      />
+    ) : (
+      <p className="text-gray-900 py-2">{value || "Not Provided"}</p>
+    )}
+  </div>
+);
+
+// Blood Group Select
+const SelectField = ({ label, name, value, handleChange, isEditing }) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-2">
+      {label}
+    </label>
+    {isEditing ? (
+      <select
+        name={name}
+        value={value}
+        onChange={handleChange}
+        className="input-field"
+      >
+        <option value="">Select</option>
+        {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((bg) => (
+          <option key={bg} value={bg}>
+            {bg}
+          </option>
+        ))}
+      </select>
+    ) : (
+      <p className="text-gray-900 py-2">{value || "Not Provided"}</p>
+    )}
+  </div>
+);
 
 export default EmployeeProfile;

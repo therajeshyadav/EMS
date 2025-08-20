@@ -4,6 +4,8 @@ const router = express.Router();
 const Leave = require("../models/leave");
 const Employee = require("../models/Employee");
 const { authenticateToken, authorizeRoles } = require("../middleware/auth");
+const { sendNotification } = require("../server");
+const Notification = require("../models/Notification");
 
 // GET /api/leaves - Get all leave requests
 router.get("/", authenticateToken, async (req, res) => {
@@ -260,6 +262,7 @@ router.get("/balance/:employeeId", authenticateToken, async (req, res) => {
     });
   }
 });
+
 router.get("/me", authenticateToken, async (req, res) => {
   try {
     const employeeId = req.user.employeeId; // from JWT

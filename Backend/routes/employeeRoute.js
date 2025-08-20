@@ -156,15 +156,14 @@ router.post(
         lastName,
         email,
         phone,
-        department, // frontend se "IT" aayega
-        position, // frontend se "Senior Backend Developer" aayega
+        department,
+        position,
         salary,
         joiningDate,
         address,
         emergencyContact,
       } = req.body;
 
-      // 1️⃣ Department lookup
       const departmentDoc = await Department.findOne({
         name: new RegExp(`^${department}$`, "i"),
       });
@@ -174,7 +173,6 @@ router.post(
           .json({ success: false, message: "Invalid department" });
       }
 
-      // 2️⃣ Position lookup
       const positionDoc = await Position.findOne({
         title: new RegExp(`^${position}$`, "i"),
       });
@@ -231,110 +229,190 @@ router.post(
   }
 );
 
-// PUT /api/employees/:id - Update employee (Admin only)
+// Employee updates their own profile
 router.put("/:id", authenticateToken, async (req, res) => {
   try {
     const employee = await Employee.findById(req.params.id);
     if (!employee) {
-      return res.status(404).json({
-        success: false,
-        message: "Employee not found",
-      });
+      return res
+        .status(404)
+        .json({ success: false, message: "Employee not found" });
     }
 
-    if (req.user.role === "employee") {
-      if (req.user.employeeId !== req.params.id) {
-        return res.status(403).json({
-          success: false,
-          message: "Unauthorized to update this profile",
-        });
+    // Only allow self-update
+    if (req.user.role === "employee" && req.user.employeeId !== req.params.id) {
+      return res.status(403).json({ success: false, message: "Unauthorized" });
+    }
+
+    const {
+      firstName,
+      lastName,
+      email,
+      phone,
+      dateOfBirth,
+      bloodGroup,
+      address = {},
+      emergencyContact = {},
+    } = req.body;
+
+    const updateData = {
+      firstName: firstName ?? employee.firstName,
+      lastName: lastName ?? employee.lastName,
+      email: email ?? employee.email,
+      phone: phone ?? employee.phone,
+      dateOfBirth: dateOfBirth ?? employee.dateOfBirth,
+      bloodGroup: bloodGroup ?? employee.bloodGroup,
+      address: { ...employee.address, ...address },
+      emergencyContact: { ...employee.emergencyContact, ...emergencyContact },
+    };
+
+    // Also update linked user account if needed
+    const userUpdate = {};
+    if (firstName || lastName)
+      userUpdate.name = `${firstName ?? employee.firstName} ${
+        lastName ?? employee.lastName
+      }`;
+    if (email) userUpdate.email = email;
+
+    if (Object.keys(userUpdate).length > 0) {
+      await User.findByIdAndUpdate(employee.userId, userUpdate, { new: true });
+    }
+
+    const updatedEmployee = await Employee.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      {
+        new: true,
+        runValidators: true,
       }
+    ).populate("userId", "name email profilePicture isActive");
 
-      const {
-        firstName,
-        lastName,
-        email,
-        phone,
-        dateOfBirth,
-        bloodGroup,
-        address = {},
-        emergencyContact = {},
-        ...otherFields
-      } = req.body;
+    return res.json({
+      success: true,
+      message: "Profile updated successfully",
+      data: updatedEmployee,
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ success: false, message: "Server error", error: error.message });
+  }
+});
 
-      let updateData = {};
-      if (req.user.role === "employee") {
-        updateData = {
-          firstName: firstName || employee.firstName,
-          lastName: lastName || employee.lastName,
-          email: email || employee.email,
-          phone: phone || employee.phone,
-          dateOfBirth: dateOfBirth || employee.dateOfBirth,
-          bloodGroup: bloodGroup || employee.bloodGroup,
-          address: { ...employee.address, ...address },
-          emergencyContact: {
-            ...employee.emergencyContact,
-            ...emergencyContact,
-          },
-        };
-      } else if (req.user.role === "admin") {
-        updateData = {
-          firstName: firstName || employee.firstName,
-          lastName: lastName || employee.lastName,
-          email: email || employee.email,
-          phone: phone || employee.phone,
-          dateOfBirth: dateOfBirth || employee.dateOfBirth,
-          bloodGroup: bloodGroup || employee.bloodGroup,
-          address: { ...employee.address, ...address },
-          emergencyContact: {
-            ...employee.emergencyContact,
-            ...emergencyContact,
-          },
-          ...otherFields,
-        };
-      }
+// ✅ Admin update route
+router.put(
+  "/update/:id",
+  authenticateToken,
+  authorizeRoles(["admin"]),
+  async (req, res) => {
+    try {
+      const employeeId = req.params.id;
 
-      const userUpdate = {};
-
-      if (firstName || lastName)
-        userUpdate.name = `${firstName || employee.firstName} ${
-          lastName || employee.lastName
-        }`;
-      if (email) userUpdate.email = email;
-      //  if (profilePicture) userUpdate.profilePicture = profilePicture;
-      if (Object.keys(userUpdate).length > 0) {
-        await User.findByIdAndUpdate(employee.userId, userUpdate, {
-          new: true,
-        });
-      }
-
-      const updateEmployee = await Employee.findByIdAndUpdate(
-        req.params.id,
-        updateData,
-        {
-          new: true,
-          runValidators: true,
-        }
-      ).populate("userId", "name email profilePicture");
-      if (!updateEmployee) {
+      const employee = await Employee.findById(employeeId).populate("userId");
+      if (!employee) {
         return res
           .status(404)
           .json({ success: false, message: "Employee not found" });
       }
-      return res.json({
+
+      let {
+        firstName,
+        lastName,
+        email,
+        phone,
+        salary,
+        department,
+        position,
+        joinDate,
+        address = {},
+        emergencyContact = {},
+        isActive,
+      } = req.body;
+
+      // 🔑 If department is provided → fetch its ObjectId
+      let departmentId = employee.department;
+      if (department) {
+        const departmentDoc = await Department.findOne({
+          name: new RegExp(`^${department}$`, "i"),
+        });
+        if (!departmentDoc) {
+          return res
+            .status(400)
+            .json({ success: false, message: "Invalid department" });
+        }
+        departmentId = departmentDoc._id;
+      }
+
+      // 🔑 If position is provided → fetch its ObjectId
+      let positionId = employee.position;
+      if (position) {
+        const positionDoc = await Position.findOne({
+          title: new RegExp(`^${position}$`, "i"),
+        });
+        if (!positionDoc) {
+          return res
+            .status(400)
+            .json({ success: false, message: "Invalid position" });
+        }
+        positionId = positionDoc._id;
+      }
+
+      // ✅ Employee updates
+      const updateData = {
+        firstName: firstName ?? employee.firstName,
+        lastName: lastName ?? employee.lastName,
+        email: email ?? employee.email,
+        phone: phone ?? employee.phone,
+        salary: salary ?? employee.salary,
+        department: departmentId, // store ObjectId
+        position: positionId,     // store ObjectId
+        joinDate: joinDate ?? employee.joinDate,
+        address: { ...employee.address, ...address },
+        emergencyContact: { ...employee.emergencyContact, ...emergencyContact },
+      };
+
+      await Employee.findByIdAndUpdate(employeeId, updateData, {
+        new: true,
+        runValidators: true,
+      });
+
+      // ✅ User updates
+      const userUpdate = {};
+      if (firstName || lastName) {
+        userUpdate.name = `${firstName || employee.firstName} ${
+          lastName || employee.lastName
+        }`;
+      }
+      if (email) userUpdate.email = email;
+      if (isActive !== undefined) userUpdate.isActive = isActive;
+
+      if (Object.keys(userUpdate).length > 0) {
+        await User.findByIdAndUpdate(employee.userId._id, userUpdate, {
+          new: true,
+        });
+      }
+
+      const finalEmployee = await Employee.findById(employeeId)
+        .populate("userId", "name email profilePicture isActive")
+        .populate("department", "name") // so frontend gets full info
+        .populate("position", "title");
+
+      res.json({
         success: true,
-        message: "Profile updated successfully",
-        data: updateEmployee,
+        message: "Employee updated successfully",
+        data: finalEmployee,
+      });
+    } catch (error) {
+      console.error("Admin update error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: error.message,
       });
     }
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
   }
-});
+);
+
 
 // DELETE /api/employees/:id - Delete employee (Admin only)
 router.delete(
