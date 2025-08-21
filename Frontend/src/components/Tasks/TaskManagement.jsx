@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Plus,
   Search,
@@ -9,27 +9,66 @@ import {
 } from "lucide-react";
 
 import CreateTaskModal from "./CreateTaskModal";
+import { TasksApi } from "../../api/api"; 
+import { EmployeesApi } from "../../api/api"; 
 
 const TaskManagement = () => {
-  const [userData, setUserData] = useState(
-    JSON.parse(localStorage.getItem("userData")) || { employees: [] }
-  );
+  const [employees, setEmployees] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [filterStatus, setFilterStatus] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
 
-  const allTasks =
-    userData.employees?.reduce((tasks, emp) => {
-      return tasks.concat(
-        (emp.tasks || []).map((task) => ({
-          ...task,
-          employeeName: emp.firstName,
-          employeeId: emp.id,
-        }))
-      );
-    }, []) || [];
+  // 🔹 Fetch employees + tasks from API
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [empRes, taskRes] = await Promise.all([
+          EmployeesApi.list(),
+          TasksApi.list(),
+        ]);
+        console.log(empRes.data.data);
+        console.log(taskRes.data.data);
 
+        setEmployees(empRes.data);
+        setTasks(
+          Array.isArray(taskRes.data) ? taskRes.data : taskRes.data.tasks || []
+        );
+      } catch (err) {
+        console.error("Failed to fetch:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // 🔹 Merge tasks with employee details
+  const allTasks = Array.isArray(tasks)
+    ? tasks.map((task) => {
+        return {
+          id: task._id,
+          taskTitle: task.title,
+          taskDescription: task.description,
+          taskdate: task.dueDate
+            ? new Date(task.dueDate).toLocaleDateString()
+            : "-",
+          category: task.category,
+          priority: task.priority || "medium",
+          status: task.status, // "new", "active", "completed", "failed"
+          employeeName:
+            task.assignedTo?.firstName +
+            " " +
+            (task.assignedTo?.lastName || ""),
+        };
+      })
+    : [];
+
+  // 🔹 Filtering logic
   const filteredTasks = allTasks.filter((task) => {
     const matchesSearch =
       task.taskTitle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -43,12 +82,28 @@ const TaskManagement = () => {
     return matchesSearch && matchesFilter;
   });
 
+  // 🔹 Stats
   const stats = {
     total: allTasks.length,
     active: allTasks.filter((task) => task.active).length,
     completed: allTasks.filter((task) => task.completed).length,
     pending: allTasks.filter((task) => task.newTask).length,
   };
+
+  // 🔹 Handle create task
+  const handleCreateTask = async (taskData) => {
+    try {
+      const res = await TasksApi.create(taskData);
+      setTasks((prev) => [...prev, res.data]); // add new task to list
+      setShowCreateModal(false);
+    } catch (err) {
+      console.error("Failed to create task:", err);
+    }
+  };
+
+  if (loading) {
+    return <p className="text-center p-6">Loading tasks...</p>;
+  }
 
   return (
     <div className="animate-fade-in">
@@ -240,37 +295,12 @@ const TaskManagement = () => {
         </div>
       </div>
 
+      {/* Create Task Modal */}
       {showCreateModal && (
         <CreateTaskModal
           onClose={() => setShowCreateModal(false)}
-          employees={userData.employees || []}
-          onCreateTask={(taskData) => {
-            // Add task to employee
-            const updatedEmployees = userData.employees.map((emp) => {
-              if (emp.firstName === taskData.assignTo) {
-                return {
-                  ...emp,
-                  tasks: [
-                    ...(emp.tasks || []),
-                    {
-                      taskTitle: taskData.taskTitle,
-                      taskDescription: taskData.taskDescription,
-                      taskdate: taskData.taskDate,
-                      category: taskData.category,
-                      active: false,
-                      newTask: true,
-                      completed: false,
-                      failed: false,
-                    },
-                  ],
-                };
-              }
-              return emp;
-            });
-
-            setUserData({ ...userData, employees: updatedEmployees });
-            setShowCreateModal(false);
-          }}
+          employees={employees}
+          onCreateTask={handleCreateTask}
         />
       )}
     </div>

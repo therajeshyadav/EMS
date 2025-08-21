@@ -1,69 +1,78 @@
-import React, { useState, useContext } from "react";
-import {
-  Calendar,
-  Clock,
-  Users,
-  TrendingUp,
-  Download,
-  Filter,
-} from "lucide-react";
-import { AuthContext } from "../../context/Authprovider";
+import React, { useState, useEffect } from "react";
+import { Calendar, Clock, Users, TrendingUp, Download, Filter } from "lucide-react";
+import { AttendanceApi } from "../../api/api";
 
 const AttendanceManagement = () => {
-  const [userData, setUserData] = useState(
-    JSON.parse(localStorage.getItem("userData")) || { employees: [] }
-  );
+  const [attendanceData, setAttendanceData] = useState([]);
+  const [pagination, setPagination] = useState({});
+  const [stats, setStats] = useState({ present: 0, absent: 0, late: 0, total: 0 });
 
+  // default to today (YYYY-MM-DD)
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split("T")[0]
   );
   const [filterStatus, setFilterStatus] = useState("all");
 
-  const attendanceData =
-    userData.employees?.map((emp) => ({
-      ...emp,
-      todayAttendance: {
-        status:
-          Math.random() > 0.2
-            ? "present"
-            : Math.random() > 0.5
-            ? "late"
-            : "absent",
-        checkIn: "09:15 AM",
-        checkOut: "06:30 PM",
-        workingHours: "8h 45m",
-      },
-    })) || [];
+  // -------- helpers --------
+  const getDateLabel = (isoDate) => {
+    const today = new Date().toISOString().split("T")[0];
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
-  const filteredData =
-    filterStatus === "all"
-      ? attendanceData
-      : attendanceData.filter(
-          (emp) => emp.todayAttendance.status === filterStatus
-        );
+    if (isoDate === today) return "Today";
+    if (isoDate === yesterday) return "Yesterday";
 
-  const stats = {
-    present: attendanceData.filter(
-      (emp) => emp.todayAttendance.status === "present"
-    ).length,
-    absent: attendanceData.filter(
-      (emp) => emp.todayAttendance.status === "absent"
-    ).length,
-    late: attendanceData.filter((emp) => emp.todayAttendance.status === "late")
-      .length,
-    total: attendanceData.length,
+    const d = new Date(isoDate);
+    if (isNaN(d)) return "";
+    return d.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
   };
+
+  const formatTime = (value) => {
+    if (!value) return "-";
+    const dt = new Date(value);
+    if (isNaN(dt)) return "-";
+    return dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  };
+
+  const formatWorkingFromMinutes = (minutes) => {
+    if (minutes == null || isNaN(minutes) || minutes <= 0) return "-";
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return `${h}h ${m}m`;
+  };
+
+  // -------- fetch --------
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const params = {
+          page: 1,
+          limit: 10,
+          date: selectedDate, 
+        };
+        if (filterStatus !== "all") params.status = filterStatus;
+
+        const res = await AttendanceApi.adminget(params);
+        const { data, stats, pagination } = res.data;
+
+        setAttendanceData(data || []);
+        setStats(stats || { present: 0, absent: 0, late: 0, total: 0 });
+        setPagination(pagination || {});
+      } catch (err) {
+        console.error("Error fetching attendance:", err);
+        setAttendanceData([]);
+        setStats({ present: 0, absent: 0, late: 0, total: 0 });
+      }
+    };
+    fetchData();
+  }, [filterStatus, selectedDate]);
 
   return (
     <div className="animate-fade-in">
+      {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            Attendance Management
-          </h1>
-          <p className="text-gray-600 mt-1">
-            Track and manage employee attendance
-          </p>
+          <h1 className="text-3xl font-bold text-gray-900">Attendance Management</h1>
+          <p className="text-gray-600 mt-1">Track and manage employee attendance</p>
         </div>
         <div className="flex space-x-3">
           <button className="btn-secondary flex items-center space-x-2">
@@ -78,10 +87,8 @@ const AttendanceManagement = () => {
         <div className="bg-white rounded-xl p-6 card-shadow">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Present Today</p>
-              <p className="text-2xl font-bold text-green-600">
-                {stats.present}
-              </p>
+              <p className="text-sm text-gray-600">Present {getDateLabel(selectedDate)}</p>
+              <p className="text-2xl font-bold text-green-600">{stats.present}</p>
             </div>
             <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
               <Users className="w-6 h-6 text-green-600" />
@@ -92,7 +99,7 @@ const AttendanceManagement = () => {
         <div className="bg-white rounded-xl p-6 card-shadow">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Absent Today</p>
+              <p className="text-sm text-gray-600">Absent {getDateLabel(selectedDate)}</p>
               <p className="text-2xl font-bold text-red-600">{stats.absent}</p>
             </div>
             <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
@@ -104,7 +111,7 @@ const AttendanceManagement = () => {
         <div className="bg-white rounded-xl p-6 card-shadow">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Late Today</p>
+              <p className="text-sm text-gray-600">Late {getDateLabel(selectedDate)}</p>
               <p className="text-2xl font-bold text-yellow-600">{stats.late}</p>
             </div>
             <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
@@ -118,7 +125,7 @@ const AttendanceManagement = () => {
             <div>
               <p className="text-sm text-gray-600">Attendance Rate</p>
               <p className="text-2xl font-bold text-blue-600">
-                {Math.round((stats.present / stats.total) * 100)}%
+                {stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0}%
               </p>
             </div>
             <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -172,46 +179,38 @@ const AttendanceManagement = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredData.map((employee) => (
-                <tr key={employee.id} className="table-row">
+              {attendanceData.map((record) => (
+                <tr key={record._id} className="table-row">
                   <td className="p-4">
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-indigo-500 rounded-full flex items-center justify-center">
                         <span className="text-white font-medium">
-                          {employee.firstName?.charAt(0)}
+                          {record.employee?.firstName?.charAt(0)}
                         </span>
                       </div>
                       <div>
                         <p className="font-medium text-gray-900">
-                          {employee.firstName}
+                          {record.employee?.firstName} {record.employee?.lastName}
                         </p>
                         <p className="text-sm text-gray-500">
-                          {employee.department || "IT"}
+                          {record.employee?.department || "IT"}
                         </p>
                       </div>
                     </div>
                   </td>
                   <td className="p-4">
-                    <span
-                      className={`status-badge status-${employee.todayAttendance.status}`}
-                    >
-                      {employee.todayAttendance.status}
+                    <span className={`status-badge status-${record.status}`}>
+                      {record.status}
                     </span>
                   </td>
                   <td className="p-4 text-gray-600">
-                    {employee.todayAttendance.status !== "absent"
-                      ? employee.todayAttendance.checkIn
-                      : "-"}
+                    {formatTime(record?.checkIn?.time)}
                   </td>
                   <td className="p-4 text-gray-600">
-                    {employee.todayAttendance.status !== "absent"
-                      ? employee.todayAttendance.checkOut
-                      : "-"}
+                    {formatTime(record?.checkOut?.time)}
                   </td>
                   <td className="p-4 text-gray-600">
-                    {employee.todayAttendance.status !== "absent"
-                      ? employee.todayAttendance.workingHours
-                      : "-"}
+                    {formatWorkingFromMinutes(record?.workingMinutes)}
                   </td>
                   <td className="p-4">
                     <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">
@@ -220,6 +219,13 @@ const AttendanceManagement = () => {
                   </td>
                 </tr>
               ))}
+              {attendanceData.length === 0 && (
+                <tr>
+                  <td colSpan="6" className="text-center p-4 text-gray-500">
+                    No attendance records found
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

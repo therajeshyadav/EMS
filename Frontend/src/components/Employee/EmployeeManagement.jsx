@@ -17,6 +17,7 @@ const EmployeeManagement = () => {
     const fetchEmployees = async () => {
       try {
         const res = await EmployeesApi.list();
+        console.log(res.data.data);
         setEmployees(res.data.data || []);
       } catch (err) {
         console.error("Error fetching employees:", err);
@@ -196,7 +197,11 @@ const EmployeeManagement = () => {
                       {employee.position?.title || "N/A"}
                     </td>
                     <td className="p-4 text-gray-600">
-                      {employee.joinDate || "N/A"}
+                      {employee.joiningDate
+                        ? new Date(employee.joiningDate).toLocaleDateString(
+                            "en-GB"
+                          )
+                        : "N/A"}
                     </td>
                     <td className="p-4">
                       <button

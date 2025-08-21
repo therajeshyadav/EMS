@@ -41,7 +41,7 @@ export const EmployeesApi = {
   get: (id) => client.get(`/employees/${id}`),
   create: (body) => client.post("/employees", body),
   update: (id, body) => client.put(`/employees/${id}`, body),
-  updateAdmin :(id, body) => client.put(`/employees/update/${id}`, body),
+  updateAdmin: (id, body) => client.put(`/employees/update/${id}`, body),
   remove: (id) => client.delete(`/employees/${id}`),
   stats: (id) => client.get(`/employees/stats/${id}`),
 };
@@ -51,6 +51,7 @@ export const AttendanceApi = {
   list: (params) => client.get("/attendance", { params }),
   me: (page = 1, limit = 3) =>
     client.get("/attendance/me", { params: { page, limit } }),
+  adminget: (params = {}) => client.get("/attendance", { params }),
   checkIn: (body) => client.post("/attendance/check-in", body),
   checkOut: (body) => client.post("/attendance/check-out", body),
   update: (id, body) => client.put(`/attendance/${id}`, body),
@@ -82,7 +83,7 @@ export const TasksApi = {
 // ======================== PAYROLL ========================
 export const PayrollApi = {
   list: (params) => client.get("/payroll", { params }),
-getme: (page = 1, limit = 4) =>
+  getme: (page = 1, limit = 4) =>
     client.get(`/payroll/my?page=${page}&limit=${limit}`),
   generate: (body) => client.post("/payroll/generate", body),
   process: (body) => client.post("/payroll/process", body),

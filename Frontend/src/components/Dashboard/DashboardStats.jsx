@@ -2,7 +2,7 @@ import React from "react";
 import { Users, UserCheck, Calendar, Clock, TrendingUp } from "lucide-react";
 
 const DashboardStats = () => {
-  // ✅ localStorage से data
+  
   const storedUser = JSON.parse(localStorage.getItem("loggedInUser")) || {};
   const employees = storedUser?.profile?.employees || [];
 

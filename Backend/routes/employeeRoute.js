@@ -364,11 +364,12 @@ router.put(
         email: email ?? employee.email,
         phone: phone ?? employee.phone,
         salary: salary ?? employee.salary,
-        department: departmentId, // store ObjectId
-        position: positionId,     // store ObjectId
+        department: departmentId, 
+        position: positionId,     
         joinDate: joinDate ?? employee.joinDate,
         address: { ...employee.address, ...address },
         emergencyContact: { ...employee.emergencyContact, ...emergencyContact },
+        isActive: isActive ?? employee.isActive, 
       };
 
       await Employee.findByIdAndUpdate(employeeId, updateData, {

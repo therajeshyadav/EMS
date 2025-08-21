@@ -5,6 +5,40 @@ const Attendance = require("../models/attendance");
 const { authenticateToken, authorizeRoles } = require("../middleware/auth");
 
 // GET /api/attendance - Get all attendance records
+// ---- helpers ----
+const startOfDay = (d) => {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+};
+const endOfDay = (d) => {
+  const x = new Date(d);
+  x.setHours(23, 59, 59, 999);
+  return x;
+};
+
+// Build a date range from either ?date=YYYY-MM-DD or ?startDate & ?endDate
+function buildDateQuery({ date, startDate, endDate }) {
+  if (date) {
+    return { $gte: startOfDay(date), $lte: endOfDay(date) };
+  }
+  if (startDate && endDate) {
+    return { $gte: startOfDay(startDate), $lte: endOfDay(endDate) };
+  }
+  // default: today
+  const today = new Date();
+  return { $gte: startOfDay(today), $lte: endOfDay(today) };
+}
+
+// Optionally compute working minutes if not stored
+function computeWorkingMinutes(doc) {
+  const inT = doc?.checkIn?.time ? new Date(doc.checkIn.time) : null;
+  const outT = doc?.checkOut?.time ? new Date(doc.checkOut.time) : null;
+  if (!inT || !outT || isNaN(inT) || isNaN(outT) || outT <= inT) return 0;
+  return Math.floor((outT - inT) / (1000 * 60));
+}
+
+// GET /attendance (admin)
 router.get(
   "/",
   authenticateToken,
@@ -14,48 +48,78 @@ router.get(
       const {
         page = 1,
         limit = 10,
-        employee,
-        startDate,
-        endDate,
-        status,
+        employee, // employee id (optional)
+        status, // 'present' | 'absent' | 'late' (optional)
+        date, // 'YYYY-MM-DD' (preferred)
+        startDate, // 'YYYY-MM-DD'
+        endDate, // 'YYYY-MM-DD'
       } = req.query;
 
-      let query = {};
-
-      if (employee) {
-        query.employee = employee;
-      }
-
-      if (startDate && endDate) {
-        query.date = {
-          $gte: new Date(startDate),
-          $lte: new Date(endDate),
-        };
-      }
-
+      const q = {};
+      if (employee) q.employee = employee;
       if (status) {
-        query.status = status;
+        if (status === "present") {
+          // agar present select kare to present + late dono aayenge
+          q.status = { $in: ["present", "late"] };
+        } else {
+          q.status = status;
+        }
       }
 
-      const attendance = await Attendance.find(query)
-        .populate("employee", "firstName lastName employeeId")
-        .populate("approvedBy", "firstName lastName")
-        .limit(limit * 1)
-        .skip((page - 1) * limit)
-        .sort({ date: -1 });
+      // date filter (defaults to today if none provided)
+      q.date = buildDateQuery({ date, startDate, endDate });
 
-      const total = await Attendance.countDocuments(query);
+      const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+      const lim = Math.max(parseInt(limit, 10) || 10, 1);
 
-      res.json({
+      const [items, total, present, absent, late] = await Promise.all([
+        Attendance.find(q)
+          .populate("employee", "firstName lastName employeeId department")
+          .sort({ date: -1 })
+          .skip((pageNum - 1) * lim)
+          .limit(lim)
+          .lean(),
+
+        Attendance.countDocuments(q),
+        Attendance.countDocuments({
+          ...q,
+          status: { $in: ["present", "late"] },
+        }),
+        Attendance.countDocuments({ ...q, status: "absent" }),
+        Attendance.countDocuments({ ...q, status: "late" }),
+      ]);
+
+      // Ensure workingMinutes is present (don’t overwrite DB, just compute for response)
+      const data = items.map((doc) => {
+        const workingMinutes =
+          typeof doc.workingHours === "number"
+            ? doc.workingHours
+            : computeWorkingMinutes(doc);
+
+        return {
+          ...doc,
+          workingMinutes, // minutes number
+        };
+      });
+
+      return res.json({
         success: true,
-        data: attendance,
+        data,
+        stats: {
+          present,
+          absent,
+          late,
+          total,
+        },
         pagination: {
-          currentPage: page,
-          totalPages: Math.ceil(total / limit),
+          currentPage: pageNum,
+          totalPages: Math.ceil(total / lim),
           totalItems: total,
+          pageSize: lim,
         },
       });
     } catch (error) {
+      console.error("attendance list error:", error);
       res.status(500).json({
         success: false,
         message: "Server error",
