@@ -17,7 +17,7 @@ const EmployeeManagement = () => {
     const fetchEmployees = async () => {
       try {
         const res = await EmployeesApi.list();
-        console.log(res.data.data);
+        console.log(res.data.data[0].employeeId);
         setEmployees(res.data.data || []);
       } catch (err) {
         console.error("Error fetching employees:", err);
@@ -184,7 +184,7 @@ const EmployeeManagement = () => {
                             {employee.firstName} {employee.lastName}
                           </p>
                           <p className="text-sm text-gray-500">
-                            ID: {employee._id}
+                            ID: {employee.employeeId}
                           </p>
                         </div>
                       </div>

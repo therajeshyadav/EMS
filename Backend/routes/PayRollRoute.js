@@ -92,11 +92,62 @@ router.get("/my", authenticateToken, async (req, res) => {
     });
   }
 });
+// POST /api/payroll/generate - Generate payslip
+router.get("/payslip/:employeeId", async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+    const { month, year } = req.query;
 
+    if (!month || !year) {
+      return res.status(400).json({
+        success: false,
+        statusCode: 400,
+        message: "Month and Year are required",
+      });
+    }
+
+    // Find employee by employeeId (EMP001)
+    const employee = await Employee.findById(employeeId);
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        statusCode: 404,
+        message: "Employee not found",
+      });
+    }
+
+    // Find payroll entry for employee
+    const payslip = await Payroll.findOne({
+      employee: employee._id,
+      month: Number(month),
+      year: Number(year),
+    }).populate("employee");
+
+    if (!payslip) {
+      return res.status(404).json({
+        success: false,
+        statusCode: 404,
+        message: "Payslip not found for this employee",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      statusCode: 200,
+      data: payslip,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      statusCode: 500,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+});
 
 // ---------------- Existing routes ----------------
 
-// POST /api/payroll/generate - Generate payslip
 router.post(
   "/generate",
   authenticateToken,
@@ -148,35 +199,84 @@ router.post(
 );
 
 // POST /api/payroll/process - Process monthly payroll
-router.post(
-  "/process",
+// routes/payroll.js
+router.post("/process", authenticateToken, authorizeRoles(["admin"]), async (req, res) => {
+  try {
+    const { month, year } = req.body;
+
+    // find all employees
+    const employees = await Employee.find();
+
+    const payrolls = [];
+    for (let emp of employees) {
+      const basicSalary = emp.salary;
+      const deductions = { pf: 2000, tax: 5000 }; // your logic here
+      const allowances = { hra: 3000, da: 2000 };
+
+      const netSalary = basicSalary + allowances.hra + allowances.da - (deductions.pf + deductions.tax);
+
+      const payroll = await Payroll.findOneAndUpdate(
+        { employee: emp._id, month, year },
+        {
+          employee: emp._id,
+          month,
+          year,
+          basicSalary,
+          deductions,
+          allowances,
+          netSalary,
+          status: "processed", // 👈 important
+        },
+        { upsert: true, new: true }
+      );
+
+      payrolls.push(payroll);
+    }
+
+    res.json({ success: true, data: payrolls });
+  } catch (err) {
+    console.error("❌ Error processing payroll:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+
+// ✅ Mark payroll as paid
+router.put(
+  "/:employeeId/mark-paid",
   authenticateToken,
   authorizeRoles(["admin"]),
   async (req, res) => {
     try {
-      const { month, year } = req.body;
+      console.log(req.body);
+      console.log(req.params);
+      const { employeeId } = req.params;
+      const { month, year, transactionId } = req.body;
 
-      const employees = await Employee.find({ isActive: true });
-      const processedPayrolls = [];
+      const payroll = await Payroll.findOneAndUpdate(
+        {
+          employee: employeeId, // ✅ match ObjectId
+          month: Number(month), // ✅ convert from string if needed
+          year: Number(year),
+        },
+        {
+          status: "paid",
+          paidAt: new Date(),
+          transactionId: transactionId || `TXN-${Date.now()}`,
+        },
+        { new: true }
+      );
 
-      for (const employee of employees) {
-        const result = await calculateAndSavePayroll(employee, month, year);
-        if (result.success) {
-          processedPayrolls.push(employee.employeeId);
-        }
+      if (!payroll) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Payroll not found" });
       }
 
-      res.json({
-        success: true,
-        message: `Payroll processed for ${processedPayrolls.length} employees`,
-        data: processedPayrolls,
-      });
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: "Server error",
-        error: error.message,
-      });
+      res.json({ success: true, data: payroll });
+    } catch (err) {
+      console.error("❌ Error marking payroll as paid:", err);
+      res.status(500).json({ success: false, message: "Server error" });
     }
   }
 );

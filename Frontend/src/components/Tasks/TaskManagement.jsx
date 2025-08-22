@@ -9,18 +9,31 @@ import {
 } from "lucide-react";
 
 import CreateTaskModal from "./CreateTaskModal";
-import { TasksApi } from "../../api/api"; 
-import { EmployeesApi } from "../../api/api"; 
+import { TasksApi } from "../../api/api";
+import { EmployeesApi } from "../../api/api";
 
 const TaskManagement = () => {
   const [employees, setEmployees] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
-
+  const [currentPage, setCurrentPage] = useState(1);
+  const tasksPerPage = 3;
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [filterStatus, setFilterStatus] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
 
+  // Calculate indexes
+  const indexOfLastTask = currentPage * tasksPerPage;
+  const indexOfFirstTask = indexOfLastTask - tasksPerPage;
+
+  // Handlers
+  const handlePrev = () => {
+    if (currentPage > 1) setCurrentPage(currentPage - 1);
+  };
+
+  const handleNext = () => {
+    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+  };
   // 🔹 Fetch employees + tasks from API
   useEffect(() => {
     const fetchData = async () => {
@@ -32,10 +45,13 @@ const TaskManagement = () => {
         ]);
         console.log(empRes.data.data);
         console.log(taskRes.data.data);
+        console.log(taskRes.data.data[0].status);
 
-        setEmployees(empRes.data);
+        setEmployees(empRes.data.data);
         setTasks(
-          Array.isArray(taskRes.data) ? taskRes.data : taskRes.data.tasks || []
+          Array.isArray(taskRes.data.data)
+            ? taskRes.data.data
+            : taskRes.data.data.tasks || []
         );
       } catch (err) {
         console.error("Failed to fetch:", err);
@@ -58,7 +74,7 @@ const TaskManagement = () => {
             ? new Date(task.dueDate).toLocaleDateString()
             : "-",
           category: task.category,
-          priority: task.priority || "medium",
+          priority: task.priority,
           status: task.status, // "new", "active", "completed", "failed"
           employeeName:
             task.assignedTo?.firstName +
@@ -69,32 +85,40 @@ const TaskManagement = () => {
     : [];
 
   // 🔹 Filtering logic
+  const filterMap = {
+    new: "pending",
+    active: "in-progress",
+    completed: "completed",
+    failed: "failed",
+  };
+
   const filteredTasks = allTasks.filter((task) => {
     const matchesSearch =
       task.taskTitle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       task.employeeName?.toLowerCase().includes(searchTerm.toLowerCase());
+
     const matchesFilter =
-      filterStatus === "all" ||
-      (filterStatus === "active" && task.active) ||
-      (filterStatus === "completed" && task.completed) ||
-      (filterStatus === "new" && task.newTask) ||
-      (filterStatus === "failed" && task.failed);
+      filterStatus === "all" || task.status === filterMap[filterStatus];
+
     return matchesSearch && matchesFilter;
   });
+  const currentTasks = filteredTasks.slice(indexOfFirstTask, indexOfLastTask);
+  const totalPages = Math.ceil(filteredTasks.length / tasksPerPage);
 
   // 🔹 Stats
   const stats = {
     total: allTasks.length,
-    active: allTasks.filter((task) => task.active).length,
-    completed: allTasks.filter((task) => task.completed).length,
-    pending: allTasks.filter((task) => task.newTask).length,
+    active: allTasks.filter((task) => task.status === "in-progress").length,
+    completed: allTasks.filter((task) => task.status === "completed").length,
+    pending: allTasks.filter((task) => task.status === "pending").length,
+    failed: allTasks.filter((task) => task.status === "failed").length,
   };
 
   // 🔹 Handle create task
   const handleCreateTask = async (taskData) => {
     try {
       const res = await TasksApi.create(taskData);
-      setTasks((prev) => [...prev, res.data]); // add new task to list
+      setTasks((prev) => [...prev, res.data]);
       setShowCreateModal(false);
     } catch (err) {
       console.error("Failed to create task:", err);
@@ -225,7 +249,7 @@ const TaskManagement = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredTasks.map((task, index) => (
+              {currentTasks.map((task, index) => (
                 <tr key={index} className="table-row">
                   <td className="p-4">
                     <div>
@@ -255,29 +279,22 @@ const TaskManagement = () => {
                   <td className="p-4 text-gray-600">{task.taskdate}</td>
                   <td className="p-4">
                     <span
-                      className={`status-badge ${
-                        task.completed
+                      className={`status-badge whitespace-nowrap ${
+                        task.status === "completed"
                           ? "status-approved"
-                          : task.active
+                          : task.status === "in-progress"
                           ? "status-pending"
-                          : task.newTask
+                          : task.status === "new"
                           ? "status-present"
-                          : task.failed
+                          : task.status === "failed"
                           ? "status-rejected"
                           : "status-pending"
                       }`}
                     >
-                      {task.completed
-                        ? "Completed"
-                        : task.active
-                        ? "Active"
-                        : task.newTask
-                        ? "New"
-                        : task.failed
-                        ? "Failed"
-                        : "Pending"}
+                      {task?.status ? task.status.toUpperCase() : "N/A"}
                     </span>
                   </td>
+
                   <td className="p-4">
                     <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">
                       Medium
@@ -292,6 +309,29 @@ const TaskManagement = () => {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* ✅ Pagination Controls OUTSIDE table */}
+        <div className="flex justify-between items-center mt-4 px-4">
+          <button
+            onClick={handlePrev}
+            disabled={currentPage === 1}
+            className="px-4 py-2 bg-gray-200 rounded-lg disabled:opacity-50 hover:bg-gray-300"
+          >
+            Prev
+          </button>
+
+          <span className="text-gray-700">
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+            onClick={handleNext}
+            disabled={currentPage === totalPages}
+            className="px-4 py-2 bg-gray-200 rounded-lg disabled:opacity-50 hover:bg-gray-300"
+          >
+            Next
+          </button>
         </div>
       </div>
 

@@ -1,7 +1,8 @@
 // api.js
 import axios from "axios";
 
-// ======================== AXIOS CLIENT ========================
+// ======================== AXIOS CLIENT ========================  //
+
 const client = axios.create({
   baseURL: "http://localhost:5000/api", // ⬅️ Change to your backend URL
   headers: {
@@ -9,7 +10,8 @@ const client = axios.create({
   },
 });
 
-// Attach token automatically from localStorage
+// Attach token automatically from localStorage  //
+
 client.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
@@ -21,7 +23,8 @@ client.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ======================== AUTH ========================
+// ======================== AUTH ========================  //
+
 export const AuthApi = {
   login: async (email, password) => {
     const { data } = await client.post("/auth/login", { email, password });
@@ -34,7 +37,8 @@ export const AuthApi = {
   },
 };
 
-// ======================== EMPLOYEES ========================
+// ======================== EMPLOYEES ========================  //
+
 export const EmployeesApi = {
   list: () => client.get("/employees"),
   me: () => client.get("/employees/me"),
@@ -46,7 +50,8 @@ export const EmployeesApi = {
   stats: (id) => client.get(`/employees/stats/${id}`),
 };
 
-// ======================== ATTENDANCE ========================
+// ======================== ATTENDANCE ========================  //
+
 export const AttendanceApi = {
   list: (params) => client.get("/attendance", { params }),
   me: (page = 1, limit = 3) =>
@@ -58,7 +63,8 @@ export const AttendanceApi = {
   reports: (params) => client.get("/attendance/reports", { params }),
 };
 
-// ======================== LEAVES ========================
+// ======================== LEAVES ========================  //
+
 export const LeavesApi = {
   list: (params) => client.get("/leaves", { params }),
   create: (body) => client.post("/leaves", body),
@@ -68,9 +74,10 @@ export const LeavesApi = {
   me: (params) => client.get("/leaves/me", { params }),
 };
 
-// ======================== TASKS ========================
+// ======================== TASKS ======================== //
+
 export const TasksApi = {
-  list: (params) => client.get("/tasks", { params }),
+  list: () => client.get("/tasks"),
   mine: (employeeId, params) =>
     client.get(`/tasks/me/${employeeId}`, { params }),
   get: (id) => client.get(`/tasks/${id}`),
@@ -87,6 +94,12 @@ export const PayrollApi = {
     client.get(`/payroll/my?page=${page}&limit=${limit}`),
   generate: (body) => client.post("/payroll/generate", body),
   process: (body) => client.post("/payroll/process", body),
+  payslip: (employeeId, month, year) =>
+    client.get(`/payroll/payslip/${employeeId}`, {
+      params: { month, year },
+    }),
+  markPaid: (employeeId, payload) =>
+    client.put(`/payroll/${employeeId}/mark-paid`, payload),
 };
 
 // ======================== NOTIFICATIONS ========================

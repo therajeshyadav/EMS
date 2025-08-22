@@ -1,25 +1,34 @@
-import React, { useState } from 'react';
-import { X, User, Calendar, Tag, FileText } from 'lucide-react';
+import React, { useState } from "react";
+import { X, User, Calendar, Tag, FileText } from "lucide-react";
 
 const CreateTaskModal = ({ onClose, employees, onCreateTask }) => {
   const [formData, setFormData] = useState({
-    taskTitle: '',
-    taskDescription: '',
-    taskDate: '',
-    assignTo: '',
-    category: '',
-    priority: 'medium'
+    title: "",
+    description: "",
+    dueDate: "",
+    assignedTo: "",
+    category: "",
+    priority: "medium",
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
     onCreateTask(formData);
+    setFormData({
+      title: "",
+      description: "",
+      dueDate: "",
+      assignedTo: "",
+      category: "",
+      priority: "medium",
+    });
   };
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
   };
 
@@ -44,8 +53,8 @@ const CreateTaskModal = ({ onClose, employees, onCreateTask }) => {
             </label>
             <input
               type="text"
-              name="taskTitle"
-              value={formData.taskTitle}
+              name="title"
+              value={formData.title}
               onChange={handleChange}
               className="input-field"
               placeholder="Enter task title"
@@ -58,8 +67,8 @@ const CreateTaskModal = ({ onClose, employees, onCreateTask }) => {
               Task Description
             </label>
             <textarea
-              name="taskDescription"
-              value={formData.taskDescription}
+              name="description"
+              value={formData.description}
               onChange={handleChange}
               className="input-field"
               rows="4"
@@ -75,16 +84,16 @@ const CreateTaskModal = ({ onClose, employees, onCreateTask }) => {
                 Assign To
               </label>
               <select
-                name="assignTo"
-                value={formData.assignTo}
+                name="assignedTo"
+                value={formData.assignedTo}
                 onChange={handleChange}
                 className="input-field"
                 required
               >
                 <option value="">Select Employee</option>
                 {employees.map((emp) => (
-                  <option key={emp.id} value={emp.firstName}>
-                    {emp.firstName} - {emp.department || 'IT'}
+                  <option key={emp._id} value={emp._id}>
+                    {emp.firstName} {emp.lastName}
                   </option>
                 ))}
               </select>
@@ -97,8 +106,8 @@ const CreateTaskModal = ({ onClose, employees, onCreateTask }) => {
               </label>
               <input
                 type="date"
-                name="taskDate"
-                value={formData.taskDate}
+                name="dueDate"
+                value={formData.dueDate}
                 onChange={handleChange}
                 className="input-field"
                 required
@@ -154,10 +163,7 @@ const CreateTaskModal = ({ onClose, employees, onCreateTask }) => {
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              className="btn-primary"
-            >
+            <button type="submit" className="btn-primary">
               Create Task
             </button>
           </div>

@@ -36,6 +36,20 @@ const EmployeeTasks = ({ data }) => {
     fetchTasks(page);
   }, [data?.employeeId, page]);
 
+  const handleTaskAction = async (taskId, action) => {
+    try {
+      let status;
+      if (action === "accept") status = "in-progress";
+      if (action === "complete") status = "completed";
+      if (action === "fail") status = "failed";
+
+      await TasksApi.setStatus(taskId, status);
+      fetchTasks(); // Refresh after action
+    } catch (err) {
+      console.error("Error updating task status:", err);
+    }
+  };
+
   const getTaskStatus = (task) => {
     if (task.status === "completed")
       return { status: "Completed", color: "green" };
@@ -68,7 +82,7 @@ const EmployeeTasks = ({ data }) => {
           <div className="text-sm text-gray-600">Total</div>
         </div>
         <div className="bg-white rounded-xl p-6 card-shadow text-center">
-          <div className="text-2xl font-bold text-green-600 mb-2">
+          <div className="text-2xl font-bold text-blue-600 mb-2">
             {stats.new || 0}
           </div>
           <div className="text-sm text-gray-600">New</div>
@@ -103,7 +117,7 @@ const EmployeeTasks = ({ data }) => {
             className="input-field w-auto"
           >
             <option value="all">All</option>
-            <option value="pending">New</option>
+            <option value="new">New</option>
             <option value="in-progress">Active</option>
             <option value="completed">Completed</option>
             <option value="failed">Failed</option>
@@ -159,6 +173,42 @@ const EmployeeTasks = ({ data }) => {
                 <div className="flex items-center text-sm text-gray-500 mb-4">
                   <Calendar className="w-4 h-4 mr-2" />
                   Due: {new Date(task.dueDate).toLocaleDateString("en-GB")}
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex space-x-2">
+                  {task.status === "new" && (
+                    <button
+                      onClick={() => handleTaskAction(task._id, "accept")}
+                      className="btn-primary text-sm flex-1"
+                    >
+                      Accept Task
+                    </button>
+                  )}
+
+                  {task.status === "pending" && (
+                    <>
+                      <button
+                        onClick={() => handleTaskAction(task._id, "complete")}
+                        className="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg text-sm flex-1"
+                      >
+                        Mark Complete
+                      </button>
+                      <button
+                        onClick={() => handleTaskAction(task._id, "fail")}
+                        className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm flex-1"
+                      >
+                        Mark Failed
+                      </button>
+                    </>
+                  )}
+
+                  {(task.status === "completed" ||
+                    task.status === "failed") && (
+                    <button className="bg-gray-100 text-gray-600 px-3 py-2 rounded-lg text-sm flex-1 cursor-not-allowed">
+                      {task.status === "completed" ? "Completed" : "Failed"}
+                    </button>
+                  )}
                 </div>
               </div>
             );

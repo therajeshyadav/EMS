@@ -2,6 +2,7 @@
 const express = require("express");
 const router = express.Router();
 const Task = require("../models/tasks");
+const Employee = require("../models/Employee");
 const { authenticateToken, authorizeRoles } = require("../middleware/auth");
 
 // GET /api/tasks - Get all tasks
@@ -128,19 +129,30 @@ router.post(
   authorizeRoles(["admin"]),
   async (req, res) => {
     try {
+      console.log(req.body);
       const { title, description, assignedTo, priority, category, dueDate } =
         req.body;
+
+     
+      const employee = await Employee.findById(assignedTo);
+      console.log(employee);
+
+      if (!employee) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Employee not found" });
+      }
 
       const task = new Task({
         title,
         description,
-        assignedTo,
+        assignedTo, 
         assignedBy: req.user.employeeId,
         priority,
         category,
         dueDate,
       });
-
+      console.log(task);
       await task.save();
 
       res.status(201).json({
