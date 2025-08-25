@@ -71,7 +71,7 @@ router.get(
 router.get("/me", authenticateToken, async (req, res) => {
   try {
     const employee = await Employee.findById(req.user.employeeId)
-      .populate("userId", "name email profilePicture")
+      .populate("userId", "name email profilePicture role")
       .populate("department", "name")
       .populate("position", "title")
       .populate("manager", "firstName lastName");
@@ -91,6 +91,7 @@ router.get("/me", authenticateToken, async (req, res) => {
       email: empObj.userId?.email,
       name: empObj.userId?.name,
       profilePicture: empObj.userId?.profilePicture,
+      role: empObj.userId?.role,
     };
 
     // remove userId object completely
@@ -164,6 +165,7 @@ router.post(
         emergencyContact,
       } = req.body;
 
+      // 1️⃣ Validate department
       const departmentDoc = await Department.findOne({
         name: new RegExp(`^${department}$`, "i"),
       });
@@ -173,6 +175,7 @@ router.post(
           .json({ success: false, message: "Invalid department" });
       }
 
+      // 2️⃣ Validate position
       const positionDoc = await Position.findOne({
         title: new RegExp(`^${position}$`, "i"),
       });
@@ -192,8 +195,25 @@ router.post(
       await user.save();
 
       // 4️⃣ Generate employee ID
-      const employeeCount = await Employee.countDocuments();
-      const employeeId = `EMP${String(employeeCount + 1).padStart(3, "0")}`;
+      const employees = await Employee.find({}, "employeeId").lean();
+      let newIdNum = 1;
+
+      if (employees.length > 0) {
+        // Extract all numeric parts
+        const usedIds = employees.map((e) =>
+          parseInt(e.employeeId.replace("EMP", ""), 10)
+        );
+
+        // Find smallest missing number
+        usedIds.sort((a, b) => a - b);
+        newIdNum = 1;
+        for (let i = 0; i < usedIds.length; i++) {
+          if (usedIds[i] !== newIdNum) break;
+          newIdNum++;
+        }
+      }
+
+      const employeeId = `EMP${String(newIdNum).padStart(3, "0")}`;
 
       // 5️⃣ Create employee profile
       const employee = new Employee({
@@ -220,6 +240,15 @@ router.post(
       });
     } catch (error) {
       console.error("Error creating employee:", error);
+
+      // Handle duplicate ID race condition
+      if (error.code === 11000 && error.keyPattern?.employeeId) {
+        return res.status(409).json({
+          success: false,
+          message: "Duplicate employee ID, please try again.",
+        });
+      }
+
       res.status(500).json({
         success: false,
         message: "Server error",
@@ -364,12 +393,12 @@ router.put(
         email: email ?? employee.email,
         phone: phone ?? employee.phone,
         salary: salary ?? employee.salary,
-        department: departmentId, 
-        position: positionId,     
+        department: departmentId,
+        position: positionId,
         joinDate: joinDate ?? employee.joinDate,
         address: { ...employee.address, ...address },
         emergencyContact: { ...employee.emergencyContact, ...emergencyContact },
-        isActive: isActive ?? employee.isActive, 
+        isActive: isActive ?? employee.isActive,
       };
 
       await Employee.findByIdAndUpdate(employeeId, updateData, {
@@ -414,7 +443,6 @@ router.put(
   }
 );
 
-
 // DELETE /api/employees/:id - Delete employee (Admin only)
 router.delete(
   "/:id",
@@ -433,7 +461,17 @@ router.delete(
 
       // Delete associated user account
       await User.findByIdAndDelete(employee.userId);
+      //payroll delete
+      await Payroll.deleteMany({ employeeId: employee._id });
 
+      // Delete related attendance
+      await Attendance.deleteMany({ employeeId: employee._id });
+
+      // Delete related tasks
+      await Task.deleteMany({ assignedTo: employee._id });
+
+      // Delete related leaves
+      await Leave.deleteMany({ employeeId: employee._id });
       // Delete employee
       await Employee.findByIdAndDelete(req.params.id);
 

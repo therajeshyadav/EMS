@@ -4,7 +4,8 @@ const express = require("express");
 const cors = require("cors");
 const connectDB = require("./config/db");
 const http = require("http");
-const { Server } = require("socket.io");
+//const { Server } = require("socket.io");
+const { initSocket } = require("./socket");
 
 const app = express();
 
@@ -26,6 +27,7 @@ app.use("/api/payroll", require("./routes/PayRollRoute"));
 app.use("/api/notifications", require("./routes/Notification"));
 app.use("/api/departments", require("./routes/DepartmentRoute"));
 app.use("/api/positions", require("./routes/PositionRoute"));
+app.use("/api/reports", require("./routes/reportsRoute"));
 
 // Error Handling
 app.use((err, req, res, next) => {
@@ -48,51 +50,63 @@ app.use("*", (req, res) => {
   });
 });
 
-// ✅ Create HTTP server
 const server = http.createServer(app);
 
+// ✅ Init socket
+initSocket(server);
+
+// ✅ Create HTTP server
+//const server = http.createServer(app);
+
 // ✅ Setup Socket.IO
-const io = new Server(server, {
-  cors: {
-    origin: "*", // frontend ka origin lagao (http://localhost:3000)
-    methods: ["GET", "POST"],
-  },
-});
+// const io = new Server(server, {
+//   cors: {
+//     origin: "*", // frontend ka origin lagao (http://localhost:3000)
+//     methods: ["GET", "POST"],
+//   },
+// });
 
-// ✅ Store connected users
-let onlineUsers = new Map();
+// ✅ Store connected users by employeeId (Mongo _id)
+//let onlineUsers = new Map();
 
-io.on("connection", (socket) => {
-  console.log("⚡ New client connected:", socket.id);
+// io.on("connection", (socket) => {
+//   console.log("⚡ New client connected:", socket.id);
 
-  // Jab user connect hoga
-  socket.on("register", (userId) => {
-    onlineUsers.set(userId, socket.id);
-    console.log(`✅ User ${userId} registered with socket ${socket.id}`);
-  });
+//   // When employee registers
+//   socket.on("register", (employeeId) => {
+//     onlineUsers.set(employeeId.toString(), socket.id);
+//     console.log(
+//       `✅ Employee ${employeeId} registered with socket ${socket.id}`
+//     );
+//   });
 
-  // Jab user disconnect kare
-  socket.on("disconnect", () => {
-    for (let [userId, id] of onlineUsers.entries()) {
-      if (id === socket.id) {
-        onlineUsers.delete(userId);
-        console.log(`❌ User ${userId} disconnected`);
-      }
-    }
-  });
-});
+//   socket.on("disconnect", () => {
+//     for (let [employeeId, id] of onlineUsers.entries()) {
+//       if (id === socket.id) {
+//         onlineUsers.delete(employeeId);
+//         console.log(`❌ Employee ${employeeId} disconnected`);
+//       }
+//     }
+//   });
+// });
 
 // ✅ Function to send notification
-const sendNotification = (recipientId, notification) => {
-  const socketId = onlineUsers.get(recipientId.toString());
-  if (socketId) {
-    io.to(socketId).emit("notification", notification);
-    console.log("📩 Notification sent to", recipientId);
-  }
-};
+// const sendNotification = (recipientId, notification) => {
+//   if (recipientId === "all") {
+//     io.emit("notification", notification);
+//     console.log("📢 Broadcast notification sent");
+//     return;
+//   }
+
+//   const socketId = onlineUsers.get(recipientId.toString());
+//   if (socketId) {
+//     io.to(socketId).emit("notification", notification);
+//     console.log("📩 Notification sent to employee:", recipientId);
+//   }
+// };
 
 // Export notification sender function
-module.exports = { server, sendNotification };
+//module.exports = { server, sendNotification };
 
 // Start server
 const PORT = process.env.PORT || 5000;

@@ -64,6 +64,7 @@ router.post("/login", async (req, res) => {
         department: employee.department?.name,
         position: employee.position?.title,
         employeeId: employee._id,
+        role: user.role,
       },
     });
   } catch (error) {

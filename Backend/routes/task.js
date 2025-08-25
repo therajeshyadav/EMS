@@ -4,6 +4,7 @@ const router = express.Router();
 const Task = require("../models/tasks");
 const Employee = require("../models/Employee");
 const { authenticateToken, authorizeRoles } = require("../middleware/auth");
+const { sendTaskUpdate } = require("../socket");
 
 // GET /api/tasks - Get all tasks
 router.get(
@@ -133,7 +134,6 @@ router.post(
       const { title, description, assignedTo, priority, category, dueDate } =
         req.body;
 
-     
       const employee = await Employee.findById(assignedTo);
       console.log(employee);
 
@@ -146,7 +146,7 @@ router.post(
       const task = new Task({
         title,
         description,
-        assignedTo, 
+        assignedTo,
         assignedBy: req.user.employeeId,
         priority,
         category,
@@ -154,7 +154,7 @@ router.post(
       });
       console.log(task);
       await task.save();
-
+      sendTaskUpdate(assignedTo, task);
       res.status(201).json({
         success: true,
         message: "Task created successfully",

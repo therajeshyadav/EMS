@@ -1,21 +1,29 @@
-import React, { useState } from 'react';
-import { X, User, Mail, Phone, MapPin, Calendar, Briefcase } from 'lucide-react';
+import React, { useState } from "react";
+import {
+  X,
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  Calendar,
+  Briefcase,
+} from "lucide-react";
 
 const AddEmployeeModal = ({ onClose, onAdd }) => {
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    password: '123', // Default password
-    phone: '',
-    address: '',
-    department: '',
-    position: '',
-    salary: '',
-    joinDate: '',
-    emergencyContact: '',
-    bloodGroup: '',
-    dateOfBirth: ''
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "123", // Default password
+    phone: "",
+    address: "",
+    department: "",
+    position: "",
+    salary: "",
+    joinDate: "",
+    emergencyContact: "",
+    bloodGroup: "",
+    dateOfBirth: "",
   });
 
   const handleSubmit = (e) => {
@@ -31,15 +39,16 @@ const AddEmployeeModal = ({ onClose, onAdd }) => {
       newTasks: 0,
       completedTasks: 0,
       failedTasks: 0,
-      leaveBalance: 20
+      leaveBalance: { casual: 12, sick: 15, annual: 20 }, // ✅ proper leaveBalance object
+      isActive: true,
     };
-    onAdd(newEmployee);
+    onAdd(newEmployee); // parent will handle API + closing
   };
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
   };
 
@@ -58,6 +67,7 @@ const AddEmployeeModal = ({ onClose, onAdd }) => {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* First Name */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <User className="w-4 h-4 inline mr-2" />
@@ -73,6 +83,7 @@ const AddEmployeeModal = ({ onClose, onAdd }) => {
               />
             </div>
 
+            {/* Last Name */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Last Name
@@ -87,6 +98,7 @@ const AddEmployeeModal = ({ onClose, onAdd }) => {
               />
             </div>
 
+            {/* Email */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <Mail className="w-4 h-4 inline mr-2" />
@@ -102,6 +114,7 @@ const AddEmployeeModal = ({ onClose, onAdd }) => {
               />
             </div>
 
+            {/* Phone */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <Phone className="w-4 h-4 inline mr-2" />
@@ -116,6 +129,7 @@ const AddEmployeeModal = ({ onClose, onAdd }) => {
               />
             </div>
 
+            {/* Department */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <Briefcase className="w-4 h-4 inline mr-2" />
@@ -137,6 +151,7 @@ const AddEmployeeModal = ({ onClose, onAdd }) => {
               </select>
             </div>
 
+            {/* Position */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Position
@@ -151,6 +166,7 @@ const AddEmployeeModal = ({ onClose, onAdd }) => {
               />
             </div>
 
+            {/* Salary */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Salary
@@ -165,6 +181,7 @@ const AddEmployeeModal = ({ onClose, onAdd }) => {
               />
             </div>
 
+            {/* Join Date */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <Calendar className="w-4 h-4 inline mr-2" />
@@ -180,6 +197,7 @@ const AddEmployeeModal = ({ onClose, onAdd }) => {
               />
             </div>
 
+            {/* Date of Birth */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Date of Birth
@@ -193,6 +211,7 @@ const AddEmployeeModal = ({ onClose, onAdd }) => {
               />
             </div>
 
+            {/* Blood Group */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Blood Group
@@ -216,6 +235,7 @@ const AddEmployeeModal = ({ onClose, onAdd }) => {
             </div>
           </div>
 
+          {/* Address */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               <MapPin className="w-4 h-4 inline mr-2" />
@@ -230,6 +250,7 @@ const AddEmployeeModal = ({ onClose, onAdd }) => {
             />
           </div>
 
+          {/* Emergency Contact */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Emergency Contact
@@ -244,6 +265,7 @@ const AddEmployeeModal = ({ onClose, onAdd }) => {
             />
           </div>
 
+          {/* Buttons */}
           <div className="flex justify-end space-x-4">
             <button
               type="button"
@@ -252,10 +274,7 @@ const AddEmployeeModal = ({ onClose, onAdd }) => {
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              className="btn-primary"
-            >
+            <button type="submit" className="btn-primary">
               Add Employee
             </button>
           </div>

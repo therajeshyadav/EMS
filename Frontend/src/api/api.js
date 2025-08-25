@@ -131,6 +131,19 @@ export const PositionsApi = {
   remove: (id) => client.delete(`/positions/${id}`),
 };
 
+// ======================== POSITIONS ========================
+export const ReportsApi = {
+  getAttendance: (startDate, endDate) => client.post(`/reports/attendance` , { startDate, endDate },),
+  exportAttendance: (startDate, endDate, format) =>
+    client.post(
+      `/reports/attendance/export/${format}`,
+      { startDate, endDate },
+      {
+        responseType: "blob", 
+      }
+    ),
+};
+
 // ======================== EXPORT ========================
 export default {
   AuthApi,

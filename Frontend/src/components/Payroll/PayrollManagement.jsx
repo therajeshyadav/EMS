@@ -288,7 +288,7 @@ const PayrollManagement = () => {
                 {payrollData.map((employee) => (
                   <tr key={employee._id} className="table-row">
                     <td className="p-4">
-                      {employee.employee.firstName} {employee.employee.lastName}
+                      {employee.employee?.firstName} {employee.employee?.lastName}
                     </td>
                     <td className="p-4">
                       ₹{employee.basicSalary?.toLocaleString()}

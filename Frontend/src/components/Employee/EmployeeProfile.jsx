@@ -4,7 +4,7 @@ import { Edit, Save, X, User, MapPin, Phone } from "lucide-react";
 import { AuthContext } from "../../context/Authprovider";
 import { EmployeesApi } from "../../api/api";
 
-const EmployeeProfile = ({data}) => {
+const EmployeeProfile = ({ data }) => {
   const { authState, setAuthState } = useContext(AuthContext);
   const profile = authState?.profile;
 
@@ -40,6 +40,7 @@ const EmployeeProfile = ({data}) => {
       });
     }
   }, [profile]);
+  console.log("authState in EmployeeProfile:", authState);
 
   // Normal input
   const handleChange = (e) => {
