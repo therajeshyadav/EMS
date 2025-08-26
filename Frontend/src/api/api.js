@@ -4,7 +4,7 @@ import axios from "axios";
 // ======================== AXIOS CLIENT ========================  //
 
 const client = axios.create({
-  baseURL: "https://ems-48ug.onrender.com", // ⬅️ Change to your backend URL
+  baseURL: "https://ems-48ug.onrender.com/api", // ⬅️ Change to your backend URL
   headers: {
     "Content-Type": "application/json",
   },
