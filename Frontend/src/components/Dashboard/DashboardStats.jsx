@@ -73,7 +73,7 @@ const DashboardStats = () => {
           Dashboard Overview
         </h1>
         <p className="text-gray-600">
-          Welcome back, {storedUser?.user?.firstName || "User"}! Here's what's
+          Welcome back, {storedUser?.profile?.firstName || "User"}! Here's what's
           happening today.
         </p>
       </div>

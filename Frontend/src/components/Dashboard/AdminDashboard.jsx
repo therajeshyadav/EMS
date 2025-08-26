@@ -14,9 +14,8 @@ import SettingsPanel from "../Settings/SettingsPanel";
 const AdminDashboard = ({ changeUser }) => {
   const [activeSection, setActiveSection] = useState("dashboard");
 
-  
   const storedUser = JSON.parse(localStorage.getItem("loggedInUser"));
-
+  console.log(storedUser, " adminsahboard");
   const handleLogout = () => {
     localStorage.removeItem("loggedInUser");
     localStorage.removeItem("token");
@@ -58,7 +57,7 @@ const AdminDashboard = ({ changeUser }) => {
       />
       <div className="flex-1">
         <TopBar
-          user={storedUser?.user || { firstName: "Admin", role: "admin" }}
+          user={storedUser.profile || { firstName: "Admin", role: "admin" }}
         />
         <main className="p-6">{renderContent()}</main>
       </div>
