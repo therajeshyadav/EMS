@@ -1,68 +1,57 @@
-import React from "react";
-import {
-  Calendar,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  TrendingUp,
-} from "lucide-react";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
+import { Calendar, Clock, CheckCircle, TrendingUp } from "lucide-react";
 import { EmployeesApi, LeavesApi } from "../../api/api";
+
 const EmployeeDashboardStats = ({ data }) => {
   const [statsData, setStatsData] = useState(null);
-  const [leaveBalance, setLeaveBalance] = useState({});
+  const [leaveBalance, setLeaveBalance] = useState(null); // null initially for partial loading
+  const [loading, setLoading] = useState(true);
 
-  // ✅ Fetch stats from backend
   useEffect(() => {
+    if (!data?.employeeId) return;
+
     const fetchStats = async () => {
       try {
-        const res = await EmployeesApi.stats(`${data?.employeeId}`);
-        if (res.data.success) {
-          setStatsData(res.data.data);
-        }
-        const resBalance = await LeavesApi.balance(`${data?.employeeId}`);
-        if (resBalance.data.success) {
-          console.log(
-            "Leave Balance API Response:",
-            resBalance.data.data.balance
-          );
+        // ✅ Fetch both APIs in parallel
+        const [resStats, resBalance] = await Promise.all([
+          EmployeesApi.stats(data.employeeId),
+          LeavesApi.balance(data.employeeId),
+        ]);
+
+        if (resStats.data.success) setStatsData(resStats.data.data);
+        if (resBalance.data.success)
           setLeaveBalance(resBalance.data.data.balance);
-        }
       } catch (error) {
         console.error("Error fetching stats:", error);
+      } finally {
+        setLoading(false);
       }
     };
 
-    if (data?.employeeId) {
-      fetchStats();
-    }
+    fetchStats();
   }, [data?.employeeId]);
 
-  // Agar abhi data nahi aaya to loading
-  if (!statsData) {
+  // Loading state
+  if (loading && !statsData) {
     return <p>Loading stats...</p>;
   }
-  console.log(statsData);
 
-  // ✅ Extract from backend
-  const completedTasks = statsData.tasks?.completedTasks || 0;
-  const activeTasks = statsData.tasks?.activeTasks || 0;
+  // Extract backend data safely
+  const completedTasks = statsData?.tasks?.completedTasks || 0;
+  const activeTasks = statsData?.tasks?.activeTasks || 0;
   const attendanceRate =
-    statsData.attendance?.totalDays > 0
+    statsData?.attendance?.totalDays > 0
       ? `${Math.round(
           (statsData.attendance.presentDays / statsData.attendance.totalDays) *
             100
         )}%`
       : "0%";
 
-  // ✅ Stats arrayn
-
-  console.log("leavebalance", leaveBalance);
-
+  // Stats array for dashboard cards
   const stats = [
     {
       title: "Tasks Completed",
-      value: completedTasks || 0,
+      value: completedTasks,
       icon: CheckCircle,
       color: "gradient-success",
       change: "+12%",
@@ -70,7 +59,7 @@ const EmployeeDashboardStats = ({ data }) => {
     },
     {
       title: "Active Tasks",
-      value: activeTasks || 0,
+      value: activeTasks,
       icon: Clock,
       color: "gradient-primary",
       change: "+5%",
@@ -78,7 +67,9 @@ const EmployeeDashboardStats = ({ data }) => {
     },
     {
       title: "Leave Balance",
-      value: Object.values(leaveBalance).reduce((a, b) => a + b, 0),
+      value: leaveBalance
+        ? Object.values(leaveBalance).reduce((a, b) => a + b, 0)
+        : "Loading...",
       icon: Calendar,
       color: "gradient-warning",
       change: "-2 days",
@@ -96,6 +87,7 @@ const EmployeeDashboardStats = ({ data }) => {
 
   return (
     <div className="animate-fade-in">
+      {/* Welcome section */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
           Welcome back, {data?.firstName}! 👋
@@ -105,6 +97,7 @@ const EmployeeDashboardStats = ({ data }) => {
         </p>
       </div>
 
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {stats.map((stat, index) => {
           const Icon = stat.icon;
@@ -140,7 +133,9 @@ const EmployeeDashboardStats = ({ data }) => {
         })}
       </div>
 
+      {/* Schedule and Quick Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Today's Schedule */}
         <div className="bg-white rounded-xl p-6 card-shadow">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
             Today's Schedule
@@ -176,6 +171,7 @@ const EmployeeDashboardStats = ({ data }) => {
           </div>
         </div>
 
+        {/* Quick Actions */}
         <div className="bg-white rounded-xl p-6 card-shadow">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
             Quick Actions

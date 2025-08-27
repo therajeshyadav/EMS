@@ -492,43 +492,43 @@ router.delete(
 // GET /api/employees/stats/:id - Get employee statistics
 router.get("/stats/:id", authenticateToken, async (req, res) => {
   try {
-    const employeeId = req.params.id;
+    const employeeId = new mongoose.Types.ObjectId(req.params.id);
 
-    // Get attendance stats
-    const attendanceStats = await Attendance.aggregate([
-      { $match: { employee: new mongoose.Types.ObjectId(employeeId) } },
-      {
-        $group: {
-          _id: null,
-          totalDays: { $sum: 1 },
-          presentDays: {
-            $sum: { $cond: [{ $eq: ["$status", "present"] }, 1, 0] },
+    // ✅ Run both aggregations in parallel
+    const [attendanceStats, taskStats] = await Promise.all([
+      Attendance.aggregate([
+        { $match: { employee: employeeId } },
+        {
+          $group: {
+            _id: null,
+            totalDays: { $sum: 1 },
+            presentDays: {
+              $sum: { $cond: [{ $eq: ["$status", "present"] }, 1, 0] },
+            },
+            absentDays: {
+              $sum: { $cond: [{ $eq: ["$status", "absent"] }, 1, 0] },
+            },
+            lateDays: { $sum: { $cond: [{ $eq: ["$status", "late"] }, 1, 0] } },
           },
-          absentDays: {
-            $sum: { $cond: [{ $eq: ["$status", "absent"] }, 1, 0] },
-          },
-          lateDays: { $sum: { $cond: [{ $eq: ["$status", "late"] }, 1, 0] } },
         },
-      },
-    ]);
-
-    // Get task stats
-    const taskStats = await Task.aggregate([
-      { $match: { assignedTo: new mongoose.Types.ObjectId(employeeId) } },
-      {
-        $group: {
-          _id: null,
-          totalTasks: { $sum: 1 },
-          completedTasks: {
-            $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] },
-          },
-          activeTasks: {
-            $sum: {
-              $cond: [{ $in: ["$status", ["pending", "in-progress"]] }, 1, 0],
+      ]),
+      Task.aggregate([
+        { $match: { assignedTo: employeeId } },
+        {
+          $group: {
+            _id: null,
+            totalTasks: { $sum: 1 },
+            completedTasks: {
+              $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] },
+            },
+            activeTasks: {
+              $sum: {
+                $cond: [{ $in: ["$status", ["pending", "in-progress"]] }, 1, 0],
+              },
             },
           },
         },
-      },
+      ]),
     ]);
 
     res.json({
@@ -548,11 +548,10 @@ router.get("/stats/:id", authenticateToken, async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    console.error("Error fetching stats:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Server error", error: error.message });
   }
 });
 
