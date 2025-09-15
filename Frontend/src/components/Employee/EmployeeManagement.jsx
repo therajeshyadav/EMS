@@ -2,12 +2,15 @@ import React, { useState, useContext, useEffect } from "react";
 import { Plus, Search, Edit, Trash2, Eye, Download } from "lucide-react";
 import { AuthContext } from "../../context/Authprovider";
 import AddEmployeeModal from "./AddEmployeeModal";
+import EditEmployeeModal from "./EditEmployeeModal";
 import { EmployeesApi } from "../../api/api";
 
 const EmployeeManagement = () => {
   const { authState, setAuthState } = useContext(AuthContext);
 
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
@@ -82,6 +85,39 @@ const EmployeeManagement = () => {
       }
     } catch (err) {
       console.error("Error adding employee:", err);
+    }
+  };
+
+  const handleEditEmployee = (employee) => {
+    setEditingEmployee(employee);
+    setShowEditModal(true);
+  };
+
+  const handleUpdateEmployee = async (updatedEmployee) => {
+    try {
+      console.log('Updating employee:', editingEmployee._id, updatedEmployee);
+      const res = await EmployeesApi.updateAdmin(editingEmployee._id, updatedEmployee);
+      console.log('Update response:', res.data);
+      
+      if (res.data.success) {
+        // Refresh the entire employee list to get updated data
+        const employeesRes = await EmployeesApi.list();
+        setAuthState((prev) => ({
+          ...prev,
+          profile: {
+            ...prev.profile,
+            employees: employeesRes.data.data || [],
+          },
+        }));
+        setShowEditModal(false);
+        setEditingEmployee(null);
+        alert("Employee updated successfully");
+      } else {
+        alert(res.data.message || "Failed to update employee");
+      }
+    } catch (error) {
+      console.error("Error updating employee:", error);
+      alert(`Error updating employee: ${error.response?.data?.message || error.message}`);
     }
   };
 
@@ -187,7 +223,10 @@ const EmployeeManagement = () => {
                       <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg">
                         <Eye className="w-4 h-4" />
                       </button>
-                      <button className="p-2 text-green-600 hover:bg-green-50 rounded-lg">
+                      <button 
+                        onClick={() => handleEditEmployee(employee)}
+                        className="p-2 text-green-600 hover:bg-green-50 rounded-lg"
+                      >
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
@@ -210,6 +249,18 @@ const EmployeeManagement = () => {
         <AddEmployeeModal
           onClose={() => setShowAddModal(false)}
           onAdd={handleAddEmployee}
+        />
+      )}
+
+      {/* Edit Employee Modal */}
+      {showEditModal && editingEmployee && (
+        <EditEmployeeModal
+          employee={editingEmployee}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditingEmployee(null);
+          }}
+          onUpdate={handleUpdateEmployee}
         />
       )}
     </div>

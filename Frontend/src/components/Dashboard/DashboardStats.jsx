@@ -1,40 +1,73 @@
-import React from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { Users, UserCheck, Calendar, Clock, TrendingUp } from "lucide-react";
+import { EmployeesApi, AttendanceApi, LeavesApi, TasksApi } from "../../api/api";
+import { AuthContext } from "../../context/Authprovider";
 
 const DashboardStats = () => {
-  
-  const storedUser = JSON.parse(localStorage.getItem("loggedInUser")) || {};
-  const employees = storedUser?.profile?.employees || [];
+  const { authState } = useContext(AuthContext);
+  const [stats, setStats] = useState({
+    totalEmployees: 0,
+    presentToday: 0,
+    pendingLeaves: 0,
+    activeTasks: 0
+  });
+  const [loading, setLoading] = useState(true);
 
-  const totalEmployees = employees.length;
-  const presentToday =
-    employees.filter((emp) =>
-      emp.attendance?.some(
-        (att) =>
-          att.date === new Date().toISOString().split("T")[0] &&
-          att.status === "present"
-      )
-    ).length || Math.floor(totalEmployees * 0.85);
+  useEffect(() => {
+    const fetchDashboardStats = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch all data in parallel
+        const [employeesRes, attendanceRes, leavesRes, tasksRes] = await Promise.all([
+          EmployeesApi.list(),
+          AttendanceApi.adminget({ date: new Date().toISOString().split('T')[0] }),
+          LeavesApi.list({ status: 'pending' }),
+          TasksApi.list()
+        ]);
 
-  const pendingLeaves =
-    employees.reduce(
-      (total, emp) =>
-        total +
-        (emp.leaves?.filter((leave) => leave.status === "pending").length || 0),
-      0
-    ) || 5;
+        const employees = employeesRes.data.data || [];
+        const todayAttendance = attendanceRes.data.data || [];
+        const pendingLeaves = leavesRes.data.data || [];
+        const allTasks = tasksRes.data.data || [];
 
-  const activeTasks =
-    employees.reduce(
-      (total, emp) =>
-        total + (emp.tasks?.filter((task) => task.active).length || 0),
-      0
-    ) || 12;
+        // Calculate stats
+        const totalEmployees = employees.length;
+        const presentToday = todayAttendance.filter(att => att.status === 'present').length;
+        const pendingLeavesCount = pendingLeaves.length;
+        const activeTasks = allTasks.filter(task => 
+          task.status === 'assigned' || task.status === 'in-progress'
+        ).length;
 
-  const stats = [
+        setStats({
+          totalEmployees,
+          presentToday,
+          pendingLeaves: pendingLeavesCount,
+          activeTasks
+        });
+      } catch (error) {
+        console.error('Error fetching dashboard stats:', error);
+        // Fallback to default values
+        setStats({
+          totalEmployees: 0,
+          presentToday: 0,
+          pendingLeaves: 0,
+          activeTasks: 0
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (authState.token) {
+      fetchDashboardStats();
+    }
+  }, [authState.token]);
+
+  const statsData = [
     {
       title: "Total Employees",
-      value: totalEmployees,
+      value: loading ? "..." : stats.totalEmployees,
       icon: Users,
       color: "gradient-primary",
       change: "+2.5%",
@@ -42,7 +75,7 @@ const DashboardStats = () => {
     },
     {
       title: "Present Today",
-      value: presentToday,
+      value: loading ? "..." : stats.presentToday,
       icon: UserCheck,
       color: "gradient-success",
       change: "+5.2%",
@@ -50,7 +83,7 @@ const DashboardStats = () => {
     },
     {
       title: "Pending Leaves",
-      value: pendingLeaves,
+      value: loading ? "..." : stats.pendingLeaves,
       icon: Calendar,
       color: "gradient-warning",
       change: "-1.8%",
@@ -58,7 +91,7 @@ const DashboardStats = () => {
     },
     {
       title: "Active Tasks",
-      value: activeTasks,
+      value: loading ? "..." : stats.activeTasks,
       icon: Clock,
       color: "gradient-danger",
       change: "+8.1%",
@@ -73,13 +106,13 @@ const DashboardStats = () => {
           Dashboard Overview
         </h1>
         <p className="text-gray-600">
-          Welcome back, {storedUser?.profile?.firstName || "User"}! Here's what's
+          Welcome back, {authState?.user?.firstName || authState?.profile?.firstName || "Admin"}! Here's what's
           happening today.
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {stats.map((stat, index) => {
+        {statsData.map((stat, index) => {
           const Icon = stat.icon;
           return (
             <div

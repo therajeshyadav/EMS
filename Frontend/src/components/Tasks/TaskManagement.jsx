@@ -118,8 +118,16 @@ const TaskManagement = () => {
   const handleCreateTask = async (taskData) => {
     try {
       const res = await TasksApi.create(taskData);
-      setTasks((prev) => [...prev, res.data]);
-      setShowCreateModal(false);
+      if (res.data.success) {
+        // Refresh the entire task list to get updated data
+        const taskRes = await TasksApi.list();
+        setTasks(
+          Array.isArray(taskRes.data.data)
+            ? taskRes.data.data
+            : taskRes.data.data.tasks || []
+        );
+        setShowCreateModal(false);
+      }
     } catch (err) {
       console.error("Failed to create task:", err);
     }

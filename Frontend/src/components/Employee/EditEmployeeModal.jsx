@@ -8,15 +8,24 @@ const EditEmployeeModal = ({ employee, onClose, onUpdate }) => {
     phone: employee.phone || "",
     department: employee.department?.name || "",
     position: employee.position?.title || "",
+    salary: employee.salary || "",
+    isActive: employee.isActive !== undefined ? employee.isActive : true,
   });
+  
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onUpdate(employee._id, form);
+    setLoading(true);
+    try {
+      await onUpdate(form);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -72,16 +81,39 @@ const EditEmployeeModal = ({ employee, onClose, onUpdate }) => {
             onChange={handleChange}
             className="input-field w-full"
           />
+          <input
+            type="number"
+            name="salary"
+            placeholder="Salary"
+            value={form.salary}
+            onChange={handleChange}
+            className="input-field w-full"
+          />
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              name="isActive"
+              checked={form.isActive}
+              onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+              className="w-4 h-4"
+            />
+            <label className="text-sm text-gray-700">Active Employee</label>
+          </div>
           <div className="flex justify-end space-x-3">
             <button
               type="button"
               onClick={onClose}
               className="btn-secondary px-4 py-2"
+              disabled={loading}
             >
               Cancel
             </button>
-            <button type="submit" className="btn-primary px-4 py-2">
-              Save Changes
+            <button 
+              type="submit" 
+              className="btn-primary px-4 py-2"
+              disabled={loading}
+            >
+              {loading ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </form>

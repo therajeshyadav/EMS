@@ -15,7 +15,6 @@ const AdminDashboard = ({ changeUser }) => {
   const [activeSection, setActiveSection] = useState("dashboard");
 
   const storedUser = JSON.parse(localStorage.getItem("loggedInUser"));
-  console.log(storedUser, " adminsahboard");
   const handleLogout = () => {
     localStorage.removeItem("loggedInUser");
     localStorage.removeItem("token");

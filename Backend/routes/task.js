@@ -65,17 +65,23 @@ router.get(
 
 router.get("/me/:id", authenticateToken, async (req, res) => {
   try {
-    const { page = 1, limit = 3 } = req.query;
+    const { page = 1, limit = 3, status } = req.query;
     const { id } = req.params;
     // const tasks = await Task.find({ assignedTo: id });
     const pageNum = parseInt(page, 10);
     const limitNum = parseInt(limit, 10);
-    const tasks = await Task.find({ assignedTo: id })
+    // Build query with optional status filter
+    const query = { assignedTo: id };
+    if (status && status !== "all") {
+      query.status = status;
+    }
+
+    const tasks = await Task.find(query)
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum)
-      .sort({ dueDate: 1 });
+      .sort({ createdAt: -1, status: 1 }); // Recent tasks first, then by status priority
 
-    const totalTasks = await Task.countDocuments({ assignedTo: id });
+    const totalTasks = await Task.countDocuments(query);
 
     if (!tasks)
       return res
@@ -234,7 +240,7 @@ router.patch("/:id/status", authenticateToken, async (req, res) => {
       task.completedAt = new Date();
       task.progress = 100;
     }
-    if (status === "progress") task.progress = 50;
+    if (status === "in-progress") task.progress = 50;
     if (status === "failed") task.progress = 0;
     await task.save();
 

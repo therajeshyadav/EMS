@@ -10,17 +10,37 @@ const EmployeeTasks = ({ data }) => {
   const [pagination, setPagination] = useState({});
   const [loading, setLoading] = useState(true);
 
-  const fetchTasks = async (pageNum = 1) => {
+  const fetchTasks = async (pageNum = 1, statusFilter = "all") => {
     if (!data?.employeeId) return;
 
     try {
       setLoading(true);
       const res = await TasksApi.mine(data.employeeId, {
         page: pageNum,
-        limit: 3,
+        limit: 6, // Increased limit to show more tasks
+        status: statusFilter !== "all" ? statusFilter : undefined,
       });
       if (res.data.success) {
-        setTasks(res.data.data);
+        // Sort tasks to prioritize new tasks first
+        const sortedTasks = res.data.data.sort((a, b) => {
+          // Priority order: pending/assigned -> in-progress -> completed -> failed
+          const statusPriority = {
+            'pending': 1,
+            'assigned': 1,
+            'in-progress': 2,
+            'completed': 3,
+            'failed': 4
+          };
+          
+          if (statusPriority[a.status] !== statusPriority[b.status]) {
+            return statusPriority[a.status] - statusPriority[b.status];
+          }
+          
+          // If same status, sort by creation date (newest first)
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        });
+        
+        setTasks(sortedTasks);
         setStats(res.data.stats);
         setPagination(res.data.pagination);
         setPage(res.data.pagination.page);
@@ -33,8 +53,8 @@ const EmployeeTasks = ({ data }) => {
   };
 
   useEffect(() => {
-    fetchTasks(page);
-  }, [data?.employeeId, page]);
+    fetchTasks(page, filterStatus);
+  }, [data?.employeeId, page, filterStatus]);
 
   const handleTaskAction = async (taskId, action) => {
     try {
@@ -44,7 +64,7 @@ const EmployeeTasks = ({ data }) => {
       if (action === "fail") status = "failed";
 
       await TasksApi.setStatus(taskId, status);
-      fetchTasks(); // Refresh after action
+      fetchTasks(page); // Refresh current page after action
     } catch (err) {
       console.error("Error updating task status:", err);
     }
@@ -56,6 +76,8 @@ const EmployeeTasks = ({ data }) => {
     if (task.status === "in-progress")
       return { status: "Active", color: "yellow" };
     if (task.status === "failed") return { status: "Failed", color: "red" };
+    if (task.status === "pending" || task.status === "assigned") 
+      return { status: "New", color: "blue" };
     return { status: "New", color: "blue" };
   };
 
@@ -107,21 +129,60 @@ const EmployeeTasks = ({ data }) => {
         </div>
       </div>
 
-      {/* Filter */}
+      {/* Quick Actions & Filter */}
       <div className="bg-white rounded-xl p-6 card-shadow mb-6">
-        <div className="flex items-center space-x-4">
-          <Filter className="w-5 h-5 text-gray-400" />
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="input-field w-auto"
-          >
-            <option value="all">All</option>
-            <option value="new">New</option>
-            <option value="in-progress">Active</option>
-            <option value="completed">Completed</option>
-            <option value="failed">Failed</option>
-          </select>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Filter className="w-5 h-5 text-gray-400" />
+            <select
+              value={filterStatus}
+              onChange={(e) => {
+                setFilterStatus(e.target.value);
+                setPage(1); // Reset to first page when filtering
+                fetchTasks(1, e.target.value);
+              }}
+              className="input-field w-auto"
+            >
+              <option value="all">All Tasks</option>
+              <option value="pending">🆕 New Tasks</option>
+              <option value="assigned">📋 Assigned Tasks</option>
+              <option value="in-progress">⚡ Active Tasks</option>
+              <option value="completed">✅ Completed</option>
+              <option value="failed">❌ Failed</option>
+            </select>
+          </div>
+          
+          {/* Quick Filter Buttons */}
+          <div className="flex space-x-2">
+            <button
+              onClick={() => {
+                setFilterStatus("pending");
+                setPage(1);
+                fetchTasks(1, "pending");
+              }}
+              className={`px-3 py-1 rounded-full text-sm font-medium ${
+                filterStatus === "pending" 
+                  ? "bg-blue-100 text-blue-800" 
+                  : "bg-gray-100 text-gray-600 hover:bg-blue-50"
+              }`}
+            >
+              New ({stats.new || 0})
+            </button>
+            <button
+              onClick={() => {
+                setFilterStatus("in-progress");
+                setPage(1);
+                fetchTasks(1, "in-progress");
+              }}
+              className={`px-3 py-1 rounded-full text-sm font-medium ${
+                filterStatus === "in-progress" 
+                  ? "bg-yellow-100 text-yellow-800" 
+                  : "bg-gray-100 text-gray-600 hover:bg-yellow-50"
+              }`}
+            >
+              Active ({stats.active || 0})
+            </button>
+          </div>
         </div>
       </div>
 
@@ -177,7 +238,8 @@ const EmployeeTasks = ({ data }) => {
 
                 {/* Action Buttons */}
                 <div className="flex space-x-2">
-                  {task.status === "new" && (
+                  {/* New tasks show Accept button */}
+                  {(task.status === "pending" || task.status === "assigned") && (
                     <button
                       onClick={() => handleTaskAction(task._id, "accept")}
                       className="btn-primary text-sm flex-1"
@@ -186,7 +248,8 @@ const EmployeeTasks = ({ data }) => {
                     </button>
                   )}
 
-                  {task.status === "pending" && (
+                  {/* Active tasks show Complete/Fail buttons */}
+                  {task.status === "in-progress" && (
                     <>
                       <button
                         onClick={() => handleTaskAction(task._id, "complete")}
@@ -203,8 +266,8 @@ const EmployeeTasks = ({ data }) => {
                     </>
                   )}
 
-                  {(task.status === "completed" ||
-                    task.status === "failed") && (
+                  {/* Completed/Failed tasks show status only */}
+                  {(task.status === "completed" || task.status === "failed") && (
                     <button className="bg-gray-100 text-gray-600 px-3 py-2 rounded-lg text-sm flex-1 cursor-not-allowed">
                       {task.status === "completed" ? "Completed" : "Failed"}
                     </button>
@@ -221,7 +284,11 @@ const EmployeeTasks = ({ data }) => {
         <div className="flex justify-center items-center mt-6 space-x-4">
           <button
             disabled={page === 1}
-            onClick={() => fetchTasks(page - 1)}
+            onClick={() => {
+              const newPage = page - 1;
+              setPage(newPage);
+              fetchTasks(newPage, filterStatus);
+            }}
             className="px-4 py-2 rounded-lg bg-gray-100 disabled:opacity-50"
           >
             Prev
@@ -231,7 +298,11 @@ const EmployeeTasks = ({ data }) => {
           </span>
           <button
             disabled={page === pagination.totalPages}
-            onClick={() => fetchTasks(page + 1)}
+            onClick={() => {
+              const newPage = page + 1;
+              setPage(newPage);
+              fetchTasks(newPage, filterStatus);
+            }}
             className="px-4 py-2 rounded-lg bg-gray-100 disabled:opacity-50"
           >
             Next
