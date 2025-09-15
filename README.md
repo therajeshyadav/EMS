@@ -262,15 +262,59 @@ The system automatically creates necessary indexes for optimal performance:
 
 ## 🚀 Deployment
 
-### Backend Deployment (Render/Heroku)
-1. Set environment variables in your hosting platform
-2. Ensure MongoDB Atlas is accessible
-3. Deploy the Backend folder
+### Backend Deployment (Render/Heroku/Railway)
+
+1. **Deploy to Render (Recommended)**
+   - Connect your GitHub repository
+   - Set the build command: `cd Backend && npm install`
+   - Set the start command: `cd Backend && npm start`
+   - Add environment variables:
+     ```
+     PORT=10000
+     MONGO_URI=your_mongodb_atlas_connection_string
+     JWT_SECRET=your_jwt_secret
+     NODE_ENV=production
+     ```
+
+2. **Deploy to Heroku**
+   ```bash
+   # Install Heroku CLI and login
+   heroku create your-app-name
+   heroku config:set MONGO_URI=your_mongodb_connection
+   heroku config:set JWT_SECRET=your_jwt_secret
+   git subtree push --prefix Backend heroku main
+   ```
 
 ### Frontend Deployment (Vercel/Netlify)
-1. Update API base URL in `Frontend/src/api/api.js`
-2. Build the project: `npm run build`
-3. Deploy the dist folder
+
+1. **Update Environment Variables**
+   - Edit `Frontend/.env.production`
+   - Replace `https://your-backend-url.onrender.com` with your actual backend URL
+   
+   ```env
+   VITE_API_BASE_URL=https://your-actual-backend-url.onrender.com/api
+   VITE_SOCKET_URL=https://your-actual-backend-url.onrender.com
+   ```
+
+2. **Deploy to Vercel**
+   ```bash
+   cd Frontend
+   npm run build
+   # Upload dist folder to Vercel or connect GitHub repo
+   ```
+
+3. **Deploy to Netlify**
+   ```bash
+   cd Frontend
+   npm run build
+   # Drag and drop dist folder to Netlify or connect GitHub repo
+   ```
+
+### Post-Deployment Steps
+1. Update CORS settings in backend if needed
+2. Test all API endpoints
+3. Verify WebSocket connections work
+4. Check database connectivity
 
 ## 🧪 Testing
 

@@ -16,8 +16,19 @@ connectDB();
 const cacheService = require("./Services/mockCacheService");
 console.log('✅ Using mock cache service (no Redis required)');
 
-// Basic middleware
-app.use(cors());
+// CORS configuration for both local and deployed frontend
+const corsOptions = {
+  origin: [
+    "http://localhost:3000",           // Local development
+    "http://localhost:5173",           // Vite dev server
+    "https://ems-kohl-alpha.vercel.app" // Deployed frontend
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' })); // Increase JSON limit
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 

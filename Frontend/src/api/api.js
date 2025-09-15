@@ -4,7 +4,7 @@ import axios from "axios";
 // ======================== AXIOS CLIENT ========================  //
 
 const client = axios.create({
-  baseURL: "http://localhost:5003/api", // ⬅️ Change to your backend URL
+  baseURL: "http://localhost:5003/api", // Back to working localhost for now
   headers: {
     "Content-Type": "application/json",
   },

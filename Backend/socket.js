@@ -5,7 +5,15 @@ let onlineUsers = new Map();
 function initSocket(server) {
   const { Server } = require("socket.io");
   io = new Server(server, {
-    cors: { origin: "*" },
+    cors: {
+      origin: [
+        "http://localhost:3000",           // Local development
+        "http://localhost:5173",           // Vite dev server
+        "https://ems-kohl-alpha.vercel.app" // Deployed frontend
+      ],
+      credentials: true,
+      methods: ["GET", "POST"]
+    },
   });
 
   io.on("connection", (socket) => {
