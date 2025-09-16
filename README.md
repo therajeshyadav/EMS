@@ -361,13 +361,6 @@ Use tools like Postman or Thunder Client to test API endpoints.
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-## 📝 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 👥 Authors
-
-- **Your Name** - Initial work - [Your GitHub](https://github.com/yourusername)
 
 ## 🙏 Acknowledgments
 
