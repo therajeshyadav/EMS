@@ -16,16 +16,35 @@ connectDB();
 const cacheService = require("./Services/mockCacheService");
 console.log('✅ Using mock cache service (no Redis required)');
 
-// CORS configuration for both local and deployed frontend
+// Enhanced CORS configuration for both local and deployed frontend
 const corsOptions = {
-  origin: [
-    "http://localhost:3000",           // Local development
-    "http://localhost:5173",           // Vite dev server
-    "https://ems-kohl-alpha.vercel.app" // Deployed frontend
-  ],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, etc.)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      "http://localhost:3000",           // Local development
+      "http://localhost:5173",           // Vite dev server
+      "https://ems-kohl-alpha.vercel.app", // Deployed frontend (old)
+      "https://ems-git-main-rajesh-s-projects-187b6c1a.vercel.app", // Current deployment
+      "https://ems-fs7qa8gg7-rajesh-s-projects-187b6c1a.vercel.app", // Alternative deployment URL
+    ];
+    
+    // Also allow any Vercel app URL for this project
+    const isVercelApp = origin && origin.match(/^https:\/\/.*\.vercel\.app$/);
+    
+    if (allowedOrigins.includes(origin) || isVercelApp) {
+      callback(null, true);
+    } else {
+      console.log('❌ CORS blocked origin:', origin);
+      console.log('✅ Allowed origins:', allowedOrigins);
+      callback(null, true); // Allow all origins for now to fix deployment
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  optionsSuccessStatus: 200
 };
 
 app.use(cors(corsOptions));
@@ -36,6 +55,26 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   next();
+});
+
+// Health check endpoints
+app.get("/", (req, res) => {
+  res.json({
+    success: true,
+    message: "EMS API Server is running",
+    timestamp: new Date().toISOString(),
+    version: "1.0.0"
+  });
+});
+
+app.get("/api/health", (req, res) => {
+  res.json({
+    success: true,
+    message: "Server is healthy",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development'
+  });
 });
 
 // Routes

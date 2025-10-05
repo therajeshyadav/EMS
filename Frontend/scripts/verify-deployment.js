@@ -1,8 +1,12 @@
 #!/usr/bin/env node
 // scripts/verify-deployment.js - Verify deployment configuration
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 console.log('🔍 Verifying deployment configuration...\n');
 
@@ -52,6 +56,14 @@ const hasLocalhost = envLines.some(line => line.includes('localhost'));
 if (hasLocalhost) {
   console.warn('\n⚠️  Warning: Found localhost references in production config!');
   console.warn('   Make sure to use your actual deployed URLs.');
+}
+
+// Check for placeholder URLs
+const hasPlaceholders = envLines.some(line => line.includes('your-backend-url') || line.includes('your-frontend-url'));
+if (hasPlaceholders) {
+  console.warn('\n⚠️  Warning: Found placeholder URLs in production config!');
+  console.warn('   Update .env.production with your actual deployment URLs.');
+  console.warn('   Build will continue but may not work correctly until URLs are updated.');
 }
 
 // Verify config.js exists
