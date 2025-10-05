@@ -2,10 +2,14 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const http = require("http");
+const connectDB = require("./config/db");
 
 console.log('🚀 Starting EMS Server...');
 console.log('PORT:', process.env.PORT);
 console.log('MONGO_URI:', process.env.MONGO_URI ? 'Set' : 'Missing');
+
+// Connect to MongoDB
+connectDB();
 
 const app = express();
 

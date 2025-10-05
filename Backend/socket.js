@@ -6,12 +6,17 @@ function initSocket(server) {
   const { Server } = require("socket.io");
   io = new Server(server, {
     cors: {
-      origin: [
-        process.env.FRONTEND_URL_1 || "http://localhost:3000",
-        process.env.FRONTEND_URL_2 || "http://localhost:5173",
-        process.env.FRONTEND_URL_3,
-        process.env.FRONTEND_URL
-      ].filter(Boolean), // Remove undefined values
+      origin: process.env.NODE_ENV === 'production' 
+        ? [
+            process.env.FRONTEND_URL,
+            "https://ems-dsnx.vercel.app"
+          ].filter(Boolean)
+        : [
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:5173"
+          ],
       credentials: true,
       methods: ["GET", "POST"]
     },
