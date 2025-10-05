@@ -6,10 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:prod": "node scripts/build-production.js",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "verify-deployment": "node scripts/verify-deployment.js"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.11",
