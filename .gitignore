@@ -3,17 +3,17 @@ node_modules/
 Backend/node_modules/
 Frontend/node_modules/
 
-# Environment variables
-Backend/.env
-Frontend/.env.local
-Frontend/.env.development.local
-Frontend/.env.test.local
-Frontend/.env.production.local
+# Environment variables (ALL ENV FILES IGNORED FOR SECURITY)
+**/.env
+**/.env.*
+.env
+.env.*
+Backend/.env*
+Frontend/.env*
 
-# Keep template env files
-!Frontend/.env
-!Frontend/.env.production
-!Backend/.env.example
+# Only keep example files (safe templates)
+!**/.env.example
+!.env.example
 
 # Build outputs
 Frontend/dist/
@@ -136,3 +136,39 @@ coverage/
 
 # Performance files
 Backend/scripts/performance-results.json
+
+# Development/Debug files (NOT FOR DEPLOYMENT)
+Frontend/src/components/Debug/
+Frontend/test-config.html
+**/debug.js
+**/test.html
+
+# Alternative/backup server files (NOT NEEDED)
+Backend/server-fixed.js
+Backend/server-working.js
+Backend/server-simple.js
+
+# Outdated documentation files (NOT NEEDED)
+DEPLOYMENT_TROUBLESHOOTING.md
+QUICK_DEPLOYMENT_FIX.md
+UPDATE_HARDCODED_VALUES.md
+IMMEDIATE_FIX_INSTRUCTIONS.md
+
+# Performance optimization files (OPTIONAL)
+PERFORMANCE_OPTIMIZATION_GUIDE.md
+Backend/scripts/performanceTest.js
+
+# Local development files
+.env.local
+.env.*.local
+*.local
+
+# Editor/IDE specific files
+.vscode/settings.json
+.idea/workspace.xml
+*.sublime-workspace
+
+# Personal notes and todos
+TODO.md
+NOTES.md
+personal-*

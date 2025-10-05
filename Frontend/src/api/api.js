@@ -1,13 +1,16 @@
 // api.js
 import axios from "axios";
+import config from "../config/config.js";
 
 // ======================== AXIOS CLIENT ========================  //
 
 const client = axios.create({
-  baseURL: "http://localhost:5003/api", // Back to working localhost for now
+  baseURL: config.API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
+  timeout: config.REQUEST_TIMEOUT,
+  withCredentials: true
 });
 
 // Attach token automatically from localStorage  //
@@ -18,9 +21,48 @@ client.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // Log API requests in development
+    if (import.meta.env.DEV) {
+      console.log(`🔗 API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    }
+    
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    console.error("❌ Request interceptor error:", error);
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor for better error handling
+client.interceptors.response.use(
+  (response) => {
+    // Log successful responses in development
+    if (import.meta.env.DEV) {
+      console.log(`✅ API Response: ${response.config.method?.toUpperCase()} ${response.config.url}`, response.status);
+    }
+    return response;
+  },
+  (error) => {
+    // Enhanced error logging
+    if (error.response) {
+      console.error(`❌ API Error ${error.response.status}:`, error.response.data?.message || error.message);
+    } else if (error.request) {
+      console.error("❌ Network Error: No response received", error.request);
+    } else {
+      console.error("❌ Request Setup Error:", error.message);
+    }
+    
+    // Handle authentication errors
+    if (error.response?.status === 401) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.location.href = "/login";
+    }
+    
+    return Promise.reject(error);
+  }
 );
 
 // ======================== AUTH ========================  //

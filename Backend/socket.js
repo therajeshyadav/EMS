@@ -7,10 +7,11 @@ function initSocket(server) {
   io = new Server(server, {
     cors: {
       origin: [
-        "http://localhost:3000",           // Local development
-        "http://localhost:5173",           // Vite dev server
-        "https://ems-kohl-alpha.vercel.app" // Deployed frontend
-      ],
+        process.env.FRONTEND_URL_1 || "http://localhost:3000",
+        process.env.FRONTEND_URL_2 || "http://localhost:5173",
+        process.env.FRONTEND_URL_3,
+        process.env.FRONTEND_URL
+      ].filter(Boolean), // Remove undefined values
       credentials: true,
       methods: ["GET", "POST"]
     },

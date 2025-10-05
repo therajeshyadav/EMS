@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { User, Lock, Eye, EyeOff, Shield } from "lucide-react";
 import { AuthApi } from "../../api/api";
 import { toast } from "react-hot-toast";
+import { AuthContext } from "../../context/Authprovider";
 
 const Login = ({ setUser, setLoggedInUserData }) => {
   const [email, setEmail] = useState("");
@@ -10,6 +11,9 @@ const Login = ({ setUser, setLoggedInUserData }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  
+  // Get AuthContext to update authState
+  const { setAuthState } = useContext(AuthContext);
 
   const submitHandler = async (e) => {
     e.preventDefault();
@@ -20,8 +24,10 @@ const Login = ({ setUser, setLoggedInUserData }) => {
       console.log("LOGIN RESPONSE:", res);
 
       if (res?.success) {
-        // ✅ Save in localStorage
+        // ✅ Save in localStorage (multiple formats for compatibility)
         localStorage.setItem("token", res.token);
+        localStorage.setItem("profile", JSON.stringify(res.profile));
+        localStorage.setItem("role", res.user?.role);
         localStorage.setItem(
           "loggedInUser",
           JSON.stringify({
@@ -32,7 +38,14 @@ const Login = ({ setUser, setLoggedInUserData }) => {
           })
         );
 
-        // ✅ Update App.jsx state
+        // ✅ Update AuthContext state
+        setAuthState({
+          token: res.token,
+          profile: res.profile,
+          role: res.user?.role,
+        });
+
+        // ✅ Update App.jsx state (for backward compatibility)
         setUser(res.user?.role);
         setLoggedInUserData(res.profile);
 
