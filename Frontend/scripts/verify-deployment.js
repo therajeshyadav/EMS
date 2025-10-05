@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// scripts/verify-deployment.js - Verify deployment configuration
+// scripts/verify-deployment-new.js - Verify deployment configuration (ES Module version)
 
 import fs from 'fs';
 import path from 'path';
@@ -58,7 +58,7 @@ if (hasLocalhost) {
   console.warn('   Make sure to use your actual deployed URLs.');
 }
 
-// Check for placeholder URLs
+// Check for placeholder URLs - but don't fail the build
 const hasPlaceholders = envLines.some(line => line.includes('your-backend-url') || line.includes('your-frontend-url'));
 if (hasPlaceholders) {
   console.warn('\n⚠️  Warning: Found placeholder URLs in production config!');
@@ -73,13 +73,8 @@ if (!fs.existsSync(configPath)) {
   process.exit(1);
 }
 
-console.log('\n✅ Deployment configuration looks good!');
-console.log('\n📝 Next steps:');
-console.log('1. Update .env.production with your actual backend URL');
-console.log('2. Run: npm run build');
-console.log('3. Deploy the dist/ folder to Vercel/Netlify');
-console.log('4. Test the deployed frontend');
+console.log('\n✅ Deployment configuration verified!');
+console.log('🚀 Proceeding with build...');
 
-console.log('\n🔗 Useful commands:');
-console.log('  npm run build    - Build for production');
-console.log('  npm run preview  - Preview production build locally');
+// Always exit with success to allow build to continue
+process.exit(0);
