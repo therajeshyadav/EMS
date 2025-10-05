@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node server-deploy.js",
+    "start": "node server.js",
     "start:dev": "node server.js",
     "start:simple": "node server-simple.js",
     "start:working": "node server-working.js",
