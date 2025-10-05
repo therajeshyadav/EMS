@@ -9,10 +9,26 @@ console.log('MONGO_URI:', process.env.MONGO_URI ? 'Set' : 'Missing');
 
 const app = express();
 
-// Simple CORS
+// Environment-based CORS configuration
+const allowedOrigins = process.env.NODE_ENV === 'production'
+  ? [
+    process.env.FRONTEND_URL,
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null
+  ].filter(Boolean)
+  : [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173"
+  ];
+
+console.log('🔒 CORS allowed origins:', allowedOrigins);
+
 app.use(cors({
-  origin: ["http://localhost:3000", "http://localhost:5173"],
-  credentials: true
+  origin: allowedOrigins,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 app.use(express.json());
@@ -56,7 +72,7 @@ routes.forEach(route => {
     console.log(`✅ ${route.name} routes loaded`);
   } catch (error) {
     console.log(`⚠️ ${route.name} routes failed:`, error.message);
-    
+
     // Create fallback route
     app.use(route.path, (req, res) => {
       res.status(503).json({
