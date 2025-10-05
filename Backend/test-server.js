@@ -1,56 +1,34 @@
-// test-server.js - Minimal server for debugging
-require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
-const connectDB = require("./config/db");
-
-const app = express();
-
-// Connect DB
-connectDB();
-
-// Basic middleware
-app.use(cors());
-app.use(express.json());
-
-// Test route
-app.get("/api/test", (req, res) => {
-  res.json({
-    success: true,
-    message: "Server is working!",
-    timestamp: new Date().toISOString()
-  });
-});
-
-// Test each route individually
-try {
-  console.log("Loading auth route...");
-  app.use("/api/auth", require("./routes/auth"));
-  console.log("✅ Auth route loaded");
-} catch (error) {
-  console.error("❌ Auth route failed:", error.message);
-}
+console.log('Starting server test...');
 
 try {
-  console.log("Loading employee route...");
-  app.use("/api/employees", require("./routes/employeeRoute"));
-  console.log("✅ Employee route loaded");
-} catch (error) {
-  console.error("❌ Employee route failed:", error.message);
-}
-
-// Error handling
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
-    success: false,
-    message: "Something went wrong!",
-    error: err.message,
+  require("dotenv").config();
+  console.log('✅ dotenv loaded');
+  
+  const express = require("express");
+  console.log('✅ express loaded');
+  
+  const app = express();
+  console.log('✅ express app created');
+  
+  const PORT = process.env.PORT || 5003;
+  console.log('PORT:', PORT);
+  
+  app.get('/', (req, res) => {
+    res.json({ message: 'Test server working!' });
   });
-});
-
-const PORT = 5002;
-app.listen(PORT, () => {
-  console.log(`🚀 Test server running on port ${PORT}`);
-  console.log(`📊 Test endpoint: http://localhost:${PORT}/api/test`);
-});
+  
+  const server = app.listen(PORT, () => {
+    console.log(`🚀 Test server running on port ${PORT}`);
+  });
+  
+  // Keep server running
+  process.on('SIGINT', () => {
+    console.log('Shutting down...');
+    server.close();
+    process.exit(0);
+  });
+  
+} catch (error) {
+  console.error('❌ Error:', error);
+  process.exit(1);
+}
