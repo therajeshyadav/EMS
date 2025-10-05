@@ -9,7 +9,8 @@
     "build:prod": "node scripts/build-production.js",
     "lint": "eslint .",
     "preview": "vite preview",
-    "verify-deployment": "node scripts/verify-deployment.js"
+    "verify-deployment": "node scripts/verify-deployment.js",
+    "prebuild": "node scripts/prebuild.js"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.11",
